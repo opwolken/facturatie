@@ -29,6 +29,7 @@ dist/
 serviceAccountKey.json
 .firebase/
 frontend/firebase-debug.log
+firebase-debug.log
 
 # Generated
 *.pyc

@@ -42,7 +42,7 @@ export default function CustomersPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-end justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl text-gray-900">Klanten</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -73,7 +73,7 @@ export default function CustomersPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {customers.map((customer) => (
             <div key={customer.id} className="card flex items-start justify-between">
               <div>

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { getIdToken } from "@/lib/firebase";
 import toast from "react-hot-toast";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+
 interface CompanySettings {
   bedrijfsnaam: string;
   adres: string;
@@ -41,7 +43,7 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     try {
       const token = await getIdToken();
-      const res = await fetch("/api/settings", {
+      const res = await fetch(`${API_BASE}/settings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -58,7 +60,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const token = await getIdToken();
-      const res = await fetch("/api/settings", {
+      const res = await fetch(`${API_BASE}/settings`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -92,7 +94,7 @@ export default function SettingsPage() {
           <h2 className="text-sm font-medium text-gray-700 mb-4">
             Bedrijfsgegevens
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="col-span-2">
               <label className="label">Bedrijfsnaam</label>
               <input
@@ -134,7 +136,7 @@ export default function SettingsPage() {
 
         <div className="card mb-6">
           <h2 className="text-sm font-medium text-gray-700 mb-4">Contact</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="label">E-mail</label>
               <input
@@ -170,7 +172,7 @@ export default function SettingsPage() {
           <h2 className="text-sm font-medium text-gray-700 mb-4">
             Financieel
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="label">KVK-nummer</label>
               <input

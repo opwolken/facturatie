@@ -62,18 +62,19 @@ export default function ExpensesPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-end justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl text-gray-900">Uitgaven</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {expenses.length} uitgaven · Totaal {formatCurrency(totalExpenses)}
+            {expenses.length} uitgaven · {formatCurrency(totalExpenses)}
           </p>
         </div>
         <Link href="/uitgaven/uploaden" className="btn-primary">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
           </svg>
-          PDF uploaden
+          <span className="hidden sm:inline">PDF uploaden</span>
+          <span className="sm:hidden">Uploaden</span>
         </Link>
       </div>
 
@@ -94,7 +95,8 @@ export default function ExpensesPage() {
         </div>
       ) : (
         <div className="card p-0 overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -187,6 +189,7 @@ export default function ExpensesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

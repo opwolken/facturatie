@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/firebase";
 import { useAuth } from "./AuthProvider";
 import { classNames } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 const navigation = [
   {
@@ -58,14 +59,20 @@ const navigation = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
 
-  return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-gray-100 bg-white">
+  const sidebarContent = (
+    <>
       {/* Logo */}
       <div className="flex h-16 items-center px-6">
         <Link href="/" className="flex items-center gap-2">
@@ -125,6 +132,61 @@ export default function Sidebar() {
           </button>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-gray-100 bg-white lg:flex">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile top bar */}
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 lg:hidden">
+        <Link href="/" className="font-serif text-xl text-gray-900">
+          opwolken
+        </Link>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={classNames(
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-100 bg-white transition-transform duration-200 lg:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex h-14 items-center justify-between px-4 border-b border-gray-100">
+          <span className="font-serif text-xl text-gray-900">opwolken</span>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex flex-1 flex-col overflow-y-auto">
+          {sidebarContent}
+        </div>
+      </aside>
+    </>
   );
 }

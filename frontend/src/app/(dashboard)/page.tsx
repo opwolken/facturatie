@@ -50,21 +50,21 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 flex items-end justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-serif text-3xl text-gray-900">Dashboard</h1>
           <p className="mt-1 text-sm text-gray-500">
             Overzicht van je administratie
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/uitgaven/uploaden" className="btn-secondary">
+        <div className="flex gap-2">
+          <Link href="/uitgaven/uploaden" className="btn-secondary flex-1 sm:flex-none">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
-            Uitgave uploaden
+            Uploaden
           </Link>
-          <Link href="/facturen/nieuw" className="btn-primary">
+          <Link href="/facturen/nieuw" className="btn-primary flex-1 sm:flex-none">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -74,7 +74,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <div className="card">
           <p className="text-sm text-gray-500">Omzet</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
@@ -102,9 +102,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts */}
-      <div className="mb-8 grid grid-cols-3 gap-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Revenue chart */}
-        <div className="card col-span-2">
+        <div className="card lg:col-span-2">
           <h2 className="mb-4 text-sm font-medium text-gray-700">
             Omzet & Uitgaven per maand
           </h2>
@@ -188,7 +188,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent tables */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Recent invoices */}
         <div className="card">
           <div className="mb-4 flex items-center justify-between">

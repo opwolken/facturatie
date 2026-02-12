@@ -112,7 +112,7 @@ export default function InvoiceDetailPage() {
         >
           &larr; Terug naar facturen
         </Link>
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-serif text-3xl text-gray-900">
@@ -126,7 +126,7 @@ export default function InvoiceDetailPage() {
               {invoice.klant_naam} · {formatDate(invoice.factuurdatum)}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {invoice.status === "concept" && (
               <Link href={`/facturen/${params.id}/bewerken`} className="btn-secondary">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -170,7 +170,7 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* Invoice content */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3 sm:gap-6">
         <div className="card">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Klant</p>
           <p className="mt-1 text-sm font-medium text-gray-900">
@@ -199,8 +199,9 @@ export default function InvoiceDetailPage() {
       )}
 
       {/* Line items */}
-      <div className="card mb-8 p-0 overflow-hidden">
-        <table className="w-full">
+      <div className="card mb-6 p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[500px]">
           <thead>
             <tr className="border-b border-gray-100">
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -242,6 +243,7 @@ export default function InvoiceDetailPage() {
             ))}
           </tbody>
         </table>
+        </div>
         <div className="border-t border-gray-100 px-6 py-4">
           <div className="flex justify-end">
             <div className="w-64 space-y-1.5">

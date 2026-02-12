@@ -97,7 +97,7 @@ export default function EditCustomerPage() {
           <h2 className="text-sm font-medium text-gray-700 mb-4">
             Bedrijfsgegevens
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="col-span-2">
               <label className="label">Bedrijfsnaam *</label>
               <input
@@ -149,7 +149,7 @@ export default function EditCustomerPage() {
 
         <div className="card mb-6">
           <h2 className="text-sm font-medium text-gray-700 mb-4">Adres</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="col-span-2">
               <label className="label">Adres</label>
               <input
@@ -193,7 +193,7 @@ export default function EditCustomerPage() {
           <h2 className="text-sm font-medium text-gray-700 mb-4">
             Zakelijke gegevens
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="label">KVK-nummer</label>
               <input

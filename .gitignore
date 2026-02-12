@@ -27,6 +27,8 @@ dist/
 # Firebase
 *-firebase-adminsdk-*.json
 serviceAccountKey.json
+.firebase/
+frontend/firebase-debug.log
 
 # Generated
 *.pyc

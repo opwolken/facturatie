@@ -43,7 +43,7 @@ export default function InvoicesPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-end justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl text-gray-900">Facturen</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -54,7 +54,8 @@ export default function InvoicesPage() {
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Nieuwe factuur
+          <span className="hidden sm:inline">Nieuwe factuur</span>
+          <span className="sm:hidden">Nieuw</span>
         </Link>
       </div>
 
@@ -71,7 +72,8 @@ export default function InvoicesPage() {
         </div>
       ) : (
         <div className="card p-0 overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -129,6 +131,7 @@ export default function InvoicesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

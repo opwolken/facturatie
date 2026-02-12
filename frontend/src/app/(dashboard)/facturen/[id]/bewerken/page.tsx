@@ -123,7 +123,7 @@ export default function EditInvoicePage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2">
           {/* Customer */}
           <div className="card">
             <h2 className="text-sm font-medium text-gray-700 mb-4">Klantgegevens</h2>
@@ -181,9 +181,10 @@ export default function EditInvoicePage() {
         </div>
 
         {/* Line items */}
-        <div className="card mb-8">
+        <div className="card mb-6">
           <h2 className="text-sm font-medium text-gray-700 mb-4">Regels</h2>
-          <div className="space-y-3">
+          <div className="overflow-x-auto">
+          <div className="min-w-[560px] space-y-3">
             <div className="grid grid-cols-12 gap-3 text-xs font-medium uppercase tracking-wider text-gray-500">
               <div className="col-span-5">Omschrijving</div>
               <div className="col-span-2">Aantal</div>
@@ -251,6 +252,7 @@ export default function EditInvoicePage() {
                 </div>
               </div>
             ))}
+          </div>
           </div>
 
           <button

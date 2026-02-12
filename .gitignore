@@ -1,23 +1,33 @@
-/.phpunit.cache
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
+# Dependencies
+frontend/node_modules/
+frontend/.next/
+backend/__pycache__/
+backend/app/__pycache__/
+backend/app/**/__pycache__/
+backend/venv/
+backend/.venv/
+
+# Environment
 .env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-Homestead.json
-Homestead.yaml
-auth.json
-npm-debug.log
-yarn-error.log
-/.fleet
-/.idea
-/.nova
-/.vscode
-/.zed
+.env.local
+backend/.env
+frontend/.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Build
+frontend/out/
+dist/
+
+# Firebase
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+
+# Generated
+*.pyc
+*.pyo

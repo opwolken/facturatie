@@ -1,7 +1,8 @@
 export interface Customer {
   id: string;
   bedrijfsnaam: string;
-  contactpersoon: string;
+  voornaam: string;
+  achternaam: string;
   email: string;
   telefoon: string;
   adres: string;

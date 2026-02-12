@@ -14,7 +14,8 @@ export default function EditCustomerPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     bedrijfsnaam: "",
-    contactpersoon: "",
+    voornaam: "",
+    achternaam: "",
     email: "",
     telefoon: "",
     adres: "",
@@ -32,7 +33,8 @@ export default function EditCustomerPage() {
         const c = data as Customer;
         setForm({
           bedrijfsnaam: c.bedrijfsnaam || "",
-          contactpersoon: c.contactpersoon || "",
+          voornaam: c.voornaam || "",
+          achternaam: c.achternaam || "",
           email: c.email || "",
           telefoon: c.telefoon || "",
           adres: c.adres || "",
@@ -107,12 +109,21 @@ export default function EditCustomerPage() {
               />
             </div>
             <div>
-              <label className="label">Contactpersoon</label>
+              <label className="label">Voornaam</label>
               <input
                 type="text"
                 className="input"
-                value={form.contactpersoon}
-                onChange={(e) => update("contactpersoon", e.target.value)}
+                value={form.voornaam}
+                onChange={(e) => update("voornaam", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">Achternaam</label>
+              <input
+                type="text"
+                className="input"
+                value={form.achternaam}
+                onChange={(e) => update("achternaam", e.target.value)}
               />
             </div>
             <div>

@@ -4,7 +4,8 @@ from typing import Optional
 
 class CustomerCreate(BaseModel):
     bedrijfsnaam: str
-    contactpersoon: Optional[str] = ""
+    voornaam: Optional[str] = ""
+    achternaam: Optional[str] = ""
     email: Optional[str] = ""
     telefoon: Optional[str] = ""
     adres: Optional[str] = ""

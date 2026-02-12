@@ -80,9 +80,9 @@ export default function CustomersPage() {
                 <h3 className="text-sm font-semibold text-gray-900">
                   {customer.bedrijfsnaam}
                 </h3>
-                {customer.contactpersoon && (
+                {(customer.voornaam || customer.achternaam) && (
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {customer.contactpersoon}
+                    {[customer.voornaam, customer.achternaam].filter(Boolean).join(" ")}
                   </p>
                 )}
                 <div className="mt-3 space-y-1">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useDropzone } from "react-dropzone";
@@ -8,6 +8,12 @@ import { uploadExpense, updateExpense } from "@/lib/api";
 import { Expense } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import toast from "react-hot-toast";
+
+const UPLOAD_STEPS = [
+  "PDF uploaden...",
+  "Analyseren met AI...",
+  "Gegevens verwerken...",
+];
 
 const CATEGORIES = [
   "Software & Licenties",
@@ -24,8 +30,11 @@ const CATEGORIES = [
 export default function UploadExpensePage() {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState(0);
+  const [methode, setMethode] = useState<"gemini" | "regex" | null>(null);
   const [expense, setExpense] = useState<Expense | null>(null);
   const [editing, setEditing] = useState(false);
+  const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [form, setForm] = useState({
     leverancier: "",
     factuurnummer: "",
@@ -42,9 +51,20 @@ export default function UploadExpensePage() {
     if (!file) return;
 
     setUploading(true);
+    setUploadStep(0);
+
+    // Animate through steps
+    let step = 0;
+    stepTimerRef.current = setInterval(() => {
+      step = Math.min(step + 1, UPLOAD_STEPS.length - 1);
+      setUploadStep(step);
+    }, 1800);
+
     try {
-      const result = (await uploadExpense(file)) as Expense;
+      const result = (await uploadExpense(file)) as Expense & { methode?: "gemini" | "regex" };
+      if (stepTimerRef.current) clearInterval(stepTimerRef.current);
       setExpense(result);
+      setMethode(result.methode || "regex");
       setForm({
         leverancier: result.leverancier || "",
         factuurnummer: result.factuurnummer || "",
@@ -58,6 +78,7 @@ export default function UploadExpensePage() {
       setEditing(true);
       toast.success("PDF geüpload en uitgelezen");
     } catch (e: any) {
+      if (stepTimerRef.current) clearInterval(stepTimerRef.current);
       toast.error(e.message);
     } finally {
       setUploading(false);
@@ -114,11 +135,18 @@ export default function UploadExpensePage() {
               <>
                 <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-gray-900" />
                 <p className="text-sm font-medium text-gray-900">
-                  PDF wordt verwerkt...
+                  {UPLOAD_STEPS[uploadStep]}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  De factuur wordt geüpload en uitgelezen
-                </p>
+                <div className="mt-3 flex justify-center gap-1.5">
+                  {UPLOAD_STEPS.map((_, i) => (
+                    <span
+                      key={i}
+                      className={`inline-block h-1.5 w-6 rounded-full transition-colors duration-500 ${
+                        i <= uploadStep ? "bg-gray-800" : "bg-gray-200"
+                      }`}
+                    />
+                  ))}
+                </div>
               </>
             ) : (
               <>
@@ -148,13 +176,30 @@ export default function UploadExpensePage() {
       ) : (
         <div>
           <div className="card mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">
-                PDF uitgelezen — controleer de gegevens
-              </span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-gray-900">
+                  PDF uitgelezen — controleer de gegevens
+                </span>
+              </div>
+              {methode === "gemini" ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L9.5 9H2l5.9 4.3L5.4 20 12 15.7 18.6 20l-2.5-6.7L22 9h-7.5z" />
+                  </svg>
+                  Gemini AI
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                  </svg>
+                  Regex
+                </span>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

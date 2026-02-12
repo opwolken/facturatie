@@ -72,7 +72,7 @@ async def upload_expense(
         "updated_at": now,
     }
     doc_ref = db.collection("expenses").add(data)
-    return {"id": doc_ref[1].id, **data}
+    return {"id": doc_ref[1].id, **data, "methode": extracted.get("methode", "regex")}
 
 
 @router.post("")

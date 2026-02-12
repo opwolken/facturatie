@@ -45,10 +45,28 @@ export const updateInvoice = (id: string, data: any) =>
   request(`/invoices/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteInvoice = (id: string) =>
   request(`/invoices/${id}`, { method: "DELETE" });
-export const generateInvoicePdf = (id: string) =>
-  request(`/invoices/${id}/pdf`, { method: "POST" });
-export const sendInvoice = (id: string) =>
-  request(`/invoices/${id}/send`, { method: "POST" });
+export const generateInvoicePdf = async (id: string): Promise<void> => {
+  const token = await getIdToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}/invoices/${id}/pdf`, { method: "POST", headers });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Er ging iets mis" }));
+    throw new Error(error.detail || `HTTP ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  const filename = res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? `factuur-${id}.pdf`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+export const sendInvoice = (id: string, data: { onderwerp?: string; bericht?: string }) =>
+  request(`/invoices/${id}/send`, { method: "POST", body: JSON.stringify(data) });
 
 // Expenses
 export const getExpenses = () => request("/expenses");

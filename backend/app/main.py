@@ -4,16 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from firebase_admin import credentials
 
-from app.config import FIREBASE_CREDENTIALS_PATH, CORS_ORIGINS
+from app.config import FIREBASE_CREDENTIALS_PATH, FIREBASE_STORAGE_BUCKET, CORS_ORIGINS
 from app.routers import invoices, expenses, customers, dashboard, settings
 
 # Initialize Firebase Admin
 if not firebase_admin._apps:
     if os.path.exists(FIREBASE_CREDENTIALS_PATH):
         cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-        firebase_admin.initialize_app(cred)
+        firebase_admin.initialize_app(cred, {"storageBucket": FIREBASE_STORAGE_BUCKET})
     else:
-        firebase_admin.initialize_app()
+        firebase_admin.initialize_app(options={"storageBucket": FIREBASE_STORAGE_BUCKET})
 
 app = FastAPI(title="Opwolken Facturatie API", version="1.0.0")
 

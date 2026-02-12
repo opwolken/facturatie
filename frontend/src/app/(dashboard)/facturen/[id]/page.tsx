@@ -26,6 +26,8 @@ export default function InvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [emailForm, setEmailForm] = useState({ onderwerp: "", bericht: "" });
 
   useEffect(() => {
     getInvoice(params.id as string)
@@ -48,10 +50,7 @@ export default function InvoiceDetailPage() {
     setGeneratingPdf(true);
     try {
       await generateInvoicePdf(params.id as string);
-      toast.success("PDF gegenereerd");
-      // Reload to get updated pdf_url
-      const updated = await getInvoice(params.id as string);
-      setInvoice(updated as Invoice);
+      toast.success("PDF gedownload");
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -59,11 +58,20 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const openSendModal = () => {
+    if (!invoice) return;
+    setEmailForm({
+      onderwerp: `Factuur ${invoice.factuurnummer}`,
+      bericht: `Beste,\n\nHierbij ontvangt u factuur ${invoice.factuurnummer}.\n\nDe factuur vindt u als bijlage bij deze e-mail.\n\nMet vriendelijke groet,\nOpwolken`,
+    });
+    setShowSendModal(true);
+  };
+
   const handleSend = async () => {
-    if (!confirm("Wil je deze factuur versturen naar de klant?")) return;
     setSending(true);
+    setShowSendModal(false);
     try {
-      await sendInvoice(params.id as string);
+      await sendInvoice(params.id as string, emailForm);
       toast.success("Factuur verzonden!");
       const updated = await getInvoice(params.id as string);
       setInvoice(updated as Invoice);
@@ -119,6 +127,14 @@ export default function InvoiceDetailPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            {invoice.status === "concept" && (
+              <Link href={`/facturen/${params.id}/bewerken`} className="btn-secondary">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+                Bewerken
+              </Link>
+            )}
             <button
               onClick={handleGeneratePdf}
               disabled={generatingPdf}
@@ -131,7 +147,7 @@ export default function InvoiceDetailPage() {
             </button>
             {invoice.status === "concept" && (
               <button
-                onClick={handleSend}
+                onClick={openSendModal}
                 disabled={sending}
                 className="btn-primary"
               >
@@ -263,6 +279,57 @@ export default function InvoiceDetailPage() {
           Factuur verwijderen
         </button>
       </div>
+
+      {/* Send email modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-4 font-serif text-xl text-gray-900">Factuur versturen</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Aan</label>
+                <p className="text-sm text-gray-600">{invoice.klant_naam}</p>
+              </div>
+              <div>
+                <label className="label">Onderwerp</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={emailForm.onderwerp}
+                  onChange={(e) => setEmailForm({ ...emailForm, onderwerp: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Bericht</label>
+                <textarea
+                  className="input min-h-[180px] resize-y"
+                  value={emailForm.bericht}
+                  onChange={(e) => setEmailForm({ ...emailForm, bericht: e.target.value })}
+                />
+              </div>
+              <p className="text-xs text-gray-400">De PDF wordt automatisch als bijlage toegevoegd.</p>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowSendModal(false)}
+                className="btn-secondary"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={sending}
+                className="btn-primary"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+                Versturen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

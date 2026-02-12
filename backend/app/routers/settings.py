@@ -19,6 +19,7 @@ class CompanySettings(BaseModel):
     email: Optional[str] = ""
     telefoon: Optional[str] = ""
     website: Optional[str] = ""
+    logo_url: Optional[str] = ""
     factuur_prefix: Optional[str] = "F"
 
 

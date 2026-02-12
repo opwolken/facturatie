@@ -95,17 +95,19 @@ export default function Sidebar() {
       {/* User section */}
       <div className="border-t border-gray-100 p-4">
         <div className="flex items-center gap-3">
-          {user?.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt=""
-              className="h-8 w-8 rounded-full"
-            />
-          ) : (
+          <div className="relative h-8 w-8 flex-shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
-              {user?.displayName?.[0] || user?.email?.[0] || "?"}
+              {user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "?"}
             </div>
-          )}
+            {user?.photoURL && (
+              <img
+                src={user.photoURL}
+                alt=""
+                className="absolute inset-0 h-8 w-8 rounded-full"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="truncate text-sm font-medium text-gray-900">
               {user?.displayName || "Gebruiker"}

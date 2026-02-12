@@ -3,10 +3,17 @@ from fastapi.responses import StreamingResponse
 from firebase_admin import firestore, storage
 from google.cloud.firestore_v1 import FieldFilter
 from datetime import datetime, timezone
+from typing import Optional
 import io
 
+from pydantic import BaseModel
 from app.auth import get_current_user
 from app.models.invoice import InvoiceCreate, InvoiceUpdate
+
+
+class SendInvoiceRequest(BaseModel):
+    onderwerp: Optional[str] = None
+    bericht: Optional[str] = None
 from app.services.pdf_generator import generate_invoice_pdf
 from app.services.email_service import send_invoice_email
 
@@ -150,11 +157,14 @@ async def generate_pdf(invoice_id: str, user: dict = Depends(get_current_user)):
 
     invoice_data = doc.to_dict()
 
-    # Get company settings
+    # Get company settings and customer
     settings_doc = db.collection("company_settings").document(user["uid"]).get()
     company = settings_doc.to_dict() if settings_doc.exists else {}
 
-    pdf_bytes = generate_invoice_pdf(invoice_data, company)
+    klant_doc = db.collection("customers").document(invoice_data.get("klant_id", "")).get()
+    klant = klant_doc.to_dict() if klant_doc.exists else {}
+
+    pdf_bytes = generate_invoice_pdf(invoice_data, company, klant)
 
     # Upload to Firebase Storage
     bucket = storage.bucket()
@@ -175,7 +185,11 @@ async def generate_pdf(invoice_id: str, user: dict = Depends(get_current_user)):
 
 
 @router.post("/{invoice_id}/send")
-async def send_invoice(invoice_id: str, user: dict = Depends(get_current_user)):
+async def send_invoice(
+    invoice_id: str,
+    body: SendInvoiceRequest = SendInvoiceRequest(),
+    user: dict = Depends(get_current_user),
+):
     db = get_db()
     doc = db.collection("invoices").document(invoice_id).get()
     if not doc.exists or doc.to_dict().get("user_id") != user["uid"]:
@@ -199,17 +213,27 @@ async def send_invoice(invoice_id: str, user: dict = Depends(get_current_user)):
     settings_doc = db.collection("company_settings").document(user["uid"]).get()
     company = settings_doc.to_dict() if settings_doc.exists else {}
 
-    # Generate PDF if not exists
-    pdf_bytes = generate_invoice_pdf(invoice_data, company)
+    # Generate PDF
+    pdf_bytes = generate_invoice_pdf(invoice_data, company, klant)
+
+    klant_naam = " ".join(filter(None, [klant.get("voornaam"), klant.get("achternaam")])) or klant["bedrijfsnaam"]
 
     # Send email
-    send_invoice_email(
-        to_email=klant["email"],
-        to_name=klant.get("contactpersoon", klant["bedrijfsnaam"]),
-        invoice_data=invoice_data,
-        company=company,
-        pdf_bytes=pdf_bytes,
-    )
+    try:
+        send_invoice_email(
+            to_email=klant["email"],
+            to_name=klant_naam,
+            invoice_data=invoice_data,
+            company=company,
+            pdf_bytes=pdf_bytes,
+            onderwerp=body.onderwerp,
+            bericht=body.bericht,
+        )
+    except Exception as e:
+        err = str(e)
+        if "domain is not verified" in err:
+            raise HTTPException(status_code=400, detail="E-mail domein niet geverifieerd bij Resend. Ga naar resend.com/domains om opwolken.com te verifiëren.")
+        raise HTTPException(status_code=500, detail=f"E-mail versturen mislukt: {err}")
 
     # Update status
     now = datetime.now(timezone.utc).isoformat()

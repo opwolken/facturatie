@@ -30,7 +30,8 @@ echo ""
 echo "=== Stap 2: Frontend deployen naar Firebase Hosting ==="
 cd "$(dirname "$0")/frontend"
 
-BACKEND_URL=$BACKEND_URL firebase deploy --only hosting
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+NEXT_PUBLIC_API_URL="${BACKEND_URL}/api" BACKEND_URL=$BACKEND_URL firebase deploy --only hosting
 
 echo ""
 echo "=== Klaar! ==="

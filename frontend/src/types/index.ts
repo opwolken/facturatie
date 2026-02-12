@@ -42,6 +42,7 @@ export interface Invoice {
   pdf_url: string | null;
   verzonden_op: string | null;
   betaald_op: string | null;
+  daan_of_wim: "Daan" | "Wim" | "Beiden" | null;
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -58,6 +59,7 @@ export interface Expense {
   btw: number;
   totaal: number;
   status: "nieuw" | "goedgekeurd" | "betaald";
+  daan_of_wim: "Daan" | "Wim" | "Beiden" | null;
   pdf_url: string | null;
   user_id: string;
   created_at: string;
@@ -65,6 +67,8 @@ export interface Expense {
 }
 
 export interface DashboardData {
+  jaar: number;
+  beschikbare_jaren: number[];
   totaal_omzet: number;
   totaal_betaald: number;
   totaal_openstaand: number;
@@ -77,4 +81,39 @@ export interface DashboardData {
   status_verdeling: Record<string, number>;
   recente_facturen: Invoice[];
   recente_uitgaven: Expense[];
+}
+
+export interface BtwData {
+  jaar: number;
+  kwartaal: number;
+  omzet: number;
+  omzet_btw: number;
+  inkoop: number;
+  inkoop_btw: number;
+  verschil: number;
+}
+
+export interface WinstVerliesTotalen {
+  jaar: number;
+  inkomsten: number;
+  uitgaven: number;
+  winst: number;
+}
+
+export interface InkomstenBelasting {
+  jaar: number;
+  ink_daan: number;
+  ink_wim: number;
+  uit_daan: number;
+  uit_wim: number;
+  winst_daan: number;
+  winst_wim: number;
+  bel_daan: number;
+  bel_wim: number;
+}
+
+export interface FinancieelData {
+  winst_verlies: WinstVerliesTotalen;
+  btw: BtwData;
+  inkomstenbelasting: InkomstenBelasting;
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getDashboard } from "@/lib/api";
-import { DashboardData } from "@/types";
+import { getDashboard, getFinancieelDashboard } from "@/lib/api";
+import { DashboardData, FinancieelData } from "@/types";
 import { formatCurrency, formatMonth, getStatusColor, getStatusLabel, formatDateShort } from "@/lib/utils";
 import {
   BarChart,
@@ -23,14 +23,24 @@ const PIE_COLORS = ["#4c6ef5", "#37b24d", "#f59f00", "#e64980", "#7950f2", "#20c
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [finData, setFinData] = useState<FinancieelData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [jaar, setJaar] = useState<number | undefined>(undefined);
+  const [kwartaal, setKwartaal] = useState<number>(Math.ceil((new Date().getMonth() + 1) / 3));
 
   useEffect(() => {
-    getDashboard()
-      .then((d) => setData(d as DashboardData))
+    setLoading(true);
+    Promise.all([
+      getDashboard(jaar),
+      getFinancieelDashboard(jaar, kwartaal),
+    ])
+      .then(([d, f]) => {
+        setData(d as DashboardData);
+        setFinData(f as FinancieelData);
+      })
       .catch((e) => toast.error(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [jaar, kwartaal]);
 
   if (loading) {
     return (
@@ -51,11 +61,34 @@ export default function DashboardPage() {
     <div>
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-serif text-3xl text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Overzicht van je administratie
-          </p>
+        <div className="flex items-end gap-4">
+          <div>
+            <h1 className="font-serif text-3xl text-gray-900">Dashboard</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Overzicht van je administratie
+            </p>
+          </div>
+          {data.beschikbare_jaren.length > 0 && (
+            <select
+              value={jaar ?? data.jaar}
+              onChange={(e) => setJaar(Number(e.target.value))}
+              className="mb-0.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            >
+              {data.beschikbare_jaren.map((j) => (
+                <option key={j} value={j}>{j}</option>
+              ))}
+            </select>
+          )}
+          <select
+            value={kwartaal}
+            onChange={(e) => setKwartaal(Number(e.target.value))}
+            className="mb-0.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+          >
+            <option value={1}>Q1</option>
+            <option value={2}>Q2</option>
+            <option value={3}>Q3</option>
+            <option value={4}>Q4</option>
+          </select>
         </div>
         <div className="flex gap-2">
           <Link href="/uitgaven/uploaden" className="btn-secondary flex-1 sm:flex-none">
@@ -100,6 +133,128 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Financial Dashboard Blocks */}
+      {finData && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* Winst & Verlies */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-gray-700">Overzicht</h2>
+              <span className="text-xs text-gray-400">{finData.winst_verlies.jaar}</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Inkomsten</span>
+                <span className="font-medium text-gray-900">
+                  {formatCurrency(finData.winst_verlies.inkomsten)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Uitgaven</span>
+                <span className="font-medium text-gray-900">
+                  {formatCurrency(finData.winst_verlies.uitgaven)}
+                </span>
+              </div>
+              <div className="border-t border-gray-100 pt-2">
+                <div className="flex justify-between text-sm font-semibold">
+                  <span className="text-gray-900">Winst</span>
+                  <span className={finData.winst_verlies.winst >= 0 ? "text-emerald-600" : "text-red-600"}>
+                    {formatCurrency(finData.winst_verlies.winst)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* BTW */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-gray-700">BTW</h2>
+              <span className="text-xs text-gray-400">
+                {finData.btw.jaar} Q{finData.btw.kwartaal}
+              </span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">1a. Omzet</span>
+                <div className="flex gap-4">
+                  <span className="font-medium text-gray-900">
+                    {formatCurrency(finData.btw.omzet)}
+                  </span>
+                  <span className="font-medium text-gray-500 w-20 text-right">
+                    {formatCurrency(finData.btw.omzet_btw)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">5b. Inkoop</span>
+                <div className="flex gap-4">
+                  <span className="font-medium text-gray-900">
+                    {formatCurrency(finData.btw.inkoop)}
+                  </span>
+                  <span className="font-medium text-gray-500 w-20 text-right">
+                    {formatCurrency(finData.btw.inkoop_btw)}
+                  </span>
+                </div>
+              </div>
+              <div className="border-t border-gray-100 pt-2">
+                <div className="flex justify-between text-sm font-semibold">
+                  <span className="text-gray-900">BTW af te dragen</span>
+                  <span className={finData.btw.verschil >= 0 ? "text-amber-600" : "text-emerald-600"}>
+                    {formatCurrency(finData.btw.verschil)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Inkomstenbelasting */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-gray-700">
+                Ink. belasting
+              </h2>
+              <span className="text-xs text-gray-400">{finData.inkomstenbelasting.jaar}</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Daan</span>
+                <div className="flex gap-4 items-baseline">
+                  <span className="text-xs text-gray-400">
+                    winst {formatCurrency(finData.inkomstenbelasting.winst_daan)}
+                  </span>
+                  <span className="font-medium text-gray-900 w-20 text-right">
+                    {formatCurrency(finData.inkomstenbelasting.bel_daan)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Wim</span>
+                <div className="flex gap-4 items-baseline">
+                  <span className="text-xs text-gray-400">
+                    winst {formatCurrency(finData.inkomstenbelasting.winst_wim)}
+                  </span>
+                  <span className="font-medium text-gray-900 w-20 text-right">
+                    {formatCurrency(finData.inkomstenbelasting.bel_wim)}
+                  </span>
+                </div>
+              </div>
+              <div className="border-t border-gray-100 pt-2">
+                <div className="flex justify-between text-sm font-semibold">
+                  <span className="text-gray-900">Totaal</span>
+                  <span className="text-gray-900">
+                    {formatCurrency(
+                      finData.inkomstenbelasting.bel_daan +
+                        finData.inkomstenbelasting.bel_wim
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Charts */}
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">

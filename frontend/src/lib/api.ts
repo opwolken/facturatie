@@ -34,7 +34,19 @@ async function request<T>(
 }
 
 // Dashboard
-export const getDashboard = () => request("/dashboard");
+export const getDashboard = (jaar?: number) => {
+  const params = new URLSearchParams();
+  if (jaar) params.set("jaar", jaar.toString());
+  const qs = params.toString();
+  return request(`/dashboard${qs ? `?${qs}` : ""}`);
+};
+export const getFinancieelDashboard = (jaar?: number, kwartaal?: number) => {
+  const params = new URLSearchParams();
+  if (jaar) params.set("jaar", jaar.toString());
+  if (kwartaal) params.set("kwartaal", kwartaal.toString());
+  const qs = params.toString();
+  return request(`/dashboard/financieel${qs ? `?${qs}` : ""}`);
+};
 
 // Invoices
 export const getInvoices = () => request("/invoices");
@@ -92,3 +104,8 @@ export const updateCustomer = (id: string, data: any) =>
   request(`/customers/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteCustomer = (id: string) =>
   request(`/customers/${id}`, { method: "DELETE" });
+
+// Preferences (column visibility per user)
+export const getPreferences = () => request("/preferences");
+export const savePreferences = (data: Record<string, string[]>) =>
+  request("/preferences", { method: "PUT", body: JSON.stringify(data) });

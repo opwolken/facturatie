@@ -31,6 +31,9 @@ serviceAccountKey.json
 frontend/firebase-debug.log
 firebase-debug.log
 
+# Scripts
+start.sh
+
 # Generated
 *.pyc
 *.pyo

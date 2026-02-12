@@ -30,6 +30,7 @@ export default function EditInvoicePage() {
     vervaldatum: "",
     onderwerp: "",
     notities: "",
+    daan_of_wim: "Beiden",
     regels: [{ ...emptyLine }] as InvoiceLineItem[],
   });
 
@@ -48,6 +49,7 @@ export default function EditInvoicePage() {
           vervaldatum: inv.vervaldatum || "",
           onderwerp: inv.onderwerp || "",
           notities: inv.notities || "",
+          daan_of_wim: inv.daan_of_wim || "Beiden",
           regels: inv.regels?.length ? inv.regels : [{ ...emptyLine }],
         });
       })
@@ -176,6 +178,18 @@ export default function EditInvoicePage() {
                 value={form.onderwerp}
                 onChange={(e) => setForm({ ...form, onderwerp: e.target.value })}
               />
+            </div>
+            <div className="mt-4">
+              <label className="label">Eigenaar</label>
+              <select
+                className="input"
+                value={form.daan_of_wim}
+                onChange={(e) => setForm({ ...form, daan_of_wim: e.target.value })}
+              >
+                <option value="Beiden">Beiden</option>
+                <option value="Daan">Daan</option>
+                <option value="Wim">Wim</option>
+              </select>
             </div>
           </div>
         </div>

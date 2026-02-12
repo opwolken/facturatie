@@ -21,6 +21,8 @@ class CompanySettings(BaseModel):
     website: Optional[str] = ""
     logo_url: Optional[str] = ""
     factuur_prefix: Optional[str] = "F"
+    dashboard_jaar: Optional[int] = None
+    dashboard_kwartaal: Optional[int] = None
 
 
 def get_db():

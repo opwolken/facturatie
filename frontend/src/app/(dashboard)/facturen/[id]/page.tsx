@@ -5,12 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   getInvoice,
+  getCustomer,
   updateInvoice,
   deleteInvoice,
   generateInvoicePdf,
   sendInvoice,
 } from "@/lib/api";
-import { Invoice } from "@/types";
+import { Invoice, Customer } from "@/types";
 import {
   formatCurrency,
   formatDate,
@@ -23,6 +24,7 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -31,7 +33,18 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => {
     getInvoice(params.id as string)
-      .then((data) => setInvoice(data as Invoice))
+      .then(async (data) => {
+        const inv = data as Invoice;
+        setInvoice(inv);
+        if (inv.klant_id) {
+          try {
+            const c = await getCustomer(inv.klant_id);
+            setCustomer(c as Customer);
+          } catch {
+            // Customer might not exist
+          }
+        }
+      })
       .catch((e) => toast.error(e.message))
       .finally(() => setLoading(false));
   }, [params.id]);
@@ -105,6 +118,7 @@ export default function InvoiceDetailPage() {
 
   return (
     <div>
+      {/* Header */}
       <div className="mb-8">
         <Link
           href="/facturen"
@@ -169,117 +183,174 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      {/* Invoice content */}
-      <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3 sm:gap-6">
-        <div className="card">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Klant</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">
-            {invoice.klant_naam}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Vervaldatum</p>
-          <p className="mt-1 text-sm font-medium text-gray-900">
-            {formatDate(invoice.vervaldatum)}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Totaal</p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">
-            {formatCurrency(invoice.totaal)}
-          </p>
-        </div>
-      </div>
-
-      {invoice.onderwerp && (
-        <div className="card mb-6">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Onderwerp</p>
-          <p className="text-sm text-gray-900">{invoice.onderwerp}</p>
-        </div>
-      )}
-
-      {/* Line items */}
-      <div className="card mb-6 p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[500px]">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Omschrijving
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                Aantal
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                Tarief
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                BTW
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                Totaal
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {invoice.regels.map((regel, i) => (
-              <tr key={i}>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {regel.beschrijving}
-                </td>
-                <td className="px-6 py-4 text-right text-sm text-gray-600">
-                  {regel.aantal}
-                </td>
-                <td className="px-6 py-4 text-right text-sm text-gray-600">
-                  {formatCurrency(regel.tarief)}
-                </td>
-                <td className="px-6 py-4 text-right text-sm text-gray-600">
-                  {regel.btw_percentage}%
-                </td>
-                <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
-                  {formatCurrency(regel.totaal)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-        <div className="border-t border-gray-100 px-6 py-4">
-          <div className="flex justify-end">
-            <div className="w-64 space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotaal</span>
-                <span>{formatCurrency(invoice.subtotaal)}</span>
+      {/* Main content: 50/50 split */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Left: Info */}
+        <div className="space-y-4">
+          {/* Customer block */}
+          {customer && (
+            <Link href={`/klanten/${customer.id}`} className="card block hover:ring-1 hover:ring-gray-200 transition-all">
+              <h2 className="text-sm font-medium text-gray-700 mb-3">Klant</h2>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{customer.bedrijfsnaam || `${customer.voornaam} ${customer.achternaam}`}</p>
+                  {customer.bedrijfsnaam && (customer.voornaam || customer.achternaam) && (
+                    <p className="text-xs text-gray-500">{customer.voornaam} {customer.achternaam}</p>
+                  )}
+                  {customer.email && (
+                    <p className="text-xs text-gray-500 mt-1">{customer.email}</p>
+                  )}
+                </div>
+                <div className="text-right text-xs text-gray-500">
+                  {customer.adres && <p>{customer.adres}</p>}
+                  {(customer.postcode || customer.plaats) && (
+                    <p>{[customer.postcode, customer.plaats].filter(Boolean).join(" ")}</p>
+                  )}
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">BTW</span>
-                <span>{formatCurrency(invoice.btw_totaal)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold border-t border-gray-200 pt-1.5">
-                <span>Totaal</span>
-                <span>{formatCurrency(invoice.totaal)}</span>
+              {(customer.kvk_nummer || customer.btw_nummer) && (
+                <div className="mt-3 pt-3 border-t border-gray-50 flex gap-4 text-xs text-gray-500">
+                  {customer.kvk_nummer && <span>KVK: {customer.kvk_nummer}</span>}
+                  {customer.btw_nummer && <span>BTW: {customer.btw_nummer}</span>}
+                </div>
+              )}
+            </Link>
+          )}
+
+          {/* Financial summary */}
+          <div className="card">
+            <h2 className="text-sm font-medium text-gray-700 mb-4">Bedragen</h2>
+            <div className="space-y-3">
+              {invoice.regels.map((regel, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-gray-500 truncate mr-4">
+                    {regel.beschrijving}
+                    <span className="text-gray-400 ml-1">
+                      ({regel.aantal}× {formatCurrency(regel.tarief)})
+                    </span>
+                  </span>
+                  <span className="font-medium text-gray-900 whitespace-nowrap">
+                    {formatCurrency(regel.totaal)}
+                  </span>
+                </div>
+              ))}
+              <div className="border-t border-gray-100 pt-2 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Subtotaal</span>
+                  <span className="text-gray-900">{formatCurrency(invoice.subtotaal)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">BTW</span>
+                  <span className="text-gray-900">{formatCurrency(invoice.btw_totaal)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold border-t border-gray-200 pt-1.5">
+                  <span className="text-gray-900">Totaal</span>
+                  <span className="text-gray-900">{formatCurrency(invoice.totaal)}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {invoice.notities && (
-        <div className="card mb-8">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-            Opmerkingen
-          </p>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">
-            {invoice.notities}
-          </p>
-        </div>
-      )}
+          {/* Details */}
+          <div className="card">
+            <h2 className="text-sm font-medium text-gray-700 mb-4">Details</h2>
+            <dl className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <dt className="text-gray-500">Factuurnummer</dt>
+                <dd className="font-medium text-gray-900">{invoice.factuurnummer}</dd>
+              </div>
+              <div className="flex justify-between text-sm">
+                <dt className="text-gray-500">Factuurdatum</dt>
+                <dd className="font-medium text-gray-900">{formatDate(invoice.factuurdatum)}</dd>
+              </div>
+              <div className="flex justify-between text-sm">
+                <dt className="text-gray-500">Vervaldatum</dt>
+                <dd className="font-medium text-gray-900">{formatDate(invoice.vervaldatum)}</dd>
+              </div>
+              {invoice.onderwerp && (
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-500">Onderwerp</dt>
+                  <dd className="font-medium text-gray-900">{invoice.onderwerp}</dd>
+                </div>
+              )}
+              {invoice.daan_of_wim && (
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-500">Eigenaar</dt>
+                  <dd className="font-medium text-gray-900">{invoice.daan_of_wim}</dd>
+                </div>
+              )}
+              {invoice.verzonden_op && (
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-500">Verzonden op</dt>
+                  <dd className="font-medium text-gray-900">{formatDate(invoice.verzonden_op)}</dd>
+                </div>
+              )}
+              {invoice.betaald_op && (
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-500">Betaald op</dt>
+                  <dd className="font-medium text-gray-900">{formatDate(invoice.betaald_op)}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
 
-      {/* Danger zone */}
-      <div className="border-t border-gray-100 pt-6">
-        <button onClick={handleDelete} className="text-sm text-red-500 hover:text-red-700">
-          Factuur verwijderen
-        </button>
+          {/* Notes */}
+          {invoice.notities && (
+            <div className="card">
+              <h2 className="text-sm font-medium text-gray-700 mb-2">Opmerkingen</h2>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notities}</p>
+            </div>
+          )}
+
+          {/* Danger zone */}
+          <div className="border-t border-gray-100 pt-4">
+            <button onClick={handleDelete} className="text-sm text-red-500 hover:text-red-700">
+              Factuur verwijderen
+            </button>
+          </div>
+        </div>
+
+        {/* Right: PDF preview */}
+        <div>
+          {invoice.pdf_url ? (
+            <div className="card p-0 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                <h2 className="text-sm font-medium text-gray-700">PDF</h2>
+                <a
+                  href={invoice.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                  Openen in nieuw tabblad
+                </a>
+              </div>
+              <iframe
+                src={invoice.pdf_url}
+                className="w-full"
+                style={{ height: "calc(100vh - 200px)", minHeight: "600px" }}
+                title="PDF preview"
+              />
+            </div>
+          ) : (
+            <div className="card flex flex-col items-center justify-center py-16 text-center">
+              <svg className="h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+              <p className="text-sm text-gray-500">Geen PDF beschikbaar</p>
+              <button
+                onClick={handleGeneratePdf}
+                disabled={generatingPdf}
+                className="mt-3 btn-secondary text-sm"
+              >
+                {generatingPdf ? "Genereren..." : "PDF genereren"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Send email modal */}

@@ -28,6 +28,7 @@ export default function NewInvoicePage() {
     vervaldatum: addDays(todayISO(), 30),
     onderwerp: "",
     notities: "",
+    daan_of_wim: "Beiden",
     regels: [{ ...emptyLine }] as InvoiceLineItem[],
   });
 
@@ -162,6 +163,18 @@ export default function NewInvoicePage() {
                 value={form.onderwerp}
                 onChange={(e) => setForm({ ...form, onderwerp: e.target.value })}
               />
+            </div>
+            <div className="mt-4">
+              <label className="label">Eigenaar</label>
+              <select
+                className="input"
+                value={form.daan_of_wim}
+                onChange={(e) => setForm({ ...form, daan_of_wim: e.target.value })}
+              >
+                <option value="Beiden">Beiden</option>
+                <option value="Daan">Daan</option>
+                <option value="Wim">Wim</option>
+              </select>
             </div>
           </div>
         </div>

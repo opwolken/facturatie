@@ -1,0 +1,2 @@
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/google/cloud/firestore_v1/base_collection.py:315: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead.
+  return query.where(field_path, op_string, value)

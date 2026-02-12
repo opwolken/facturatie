@@ -19,6 +19,7 @@ class InvoiceCreate(BaseModel):
     regels: list[InvoiceLineItem] = []
     notities: Optional[str] = ""
     status: str = "concept"
+    daan_of_wim: Optional[str] = "Beiden"
 
 
 class InvoiceUpdate(BaseModel):
@@ -30,6 +31,7 @@ class InvoiceUpdate(BaseModel):
     regels: Optional[list[InvoiceLineItem]] = None
     notities: Optional[str] = None
     status: Optional[str] = None
+    daan_of_wim: Optional[str] = None
 
 
 class Invoice(InvoiceCreate):
@@ -42,5 +44,6 @@ class Invoice(InvoiceCreate):
     pdf_url: Optional[str] = None
     verzonden_op: Optional[str] = None
     betaald_op: Optional[str] = None
+    daan_of_wim: Optional[str] = "Beiden"
     created_at: Optional[str] = None
     updated_at: Optional[str] = None

@@ -12,6 +12,7 @@ class ExpenseCreate(BaseModel):
     btw: float = 0
     totaal: float = 0
     status: str = "nieuw"
+    daan_of_wim: Optional[str] = "Beiden"
 
 
 class ExpenseUpdate(ExpenseCreate):
@@ -22,5 +23,6 @@ class Expense(ExpenseCreate):
     id: str
     user_id: str
     pdf_url: Optional[str] = None
+    daan_of_wim: Optional[str] = "Beiden"
     created_at: Optional[str] = None
     updated_at: Optional[str] = None

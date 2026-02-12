@@ -44,6 +44,7 @@ export default function UploadExpensePage() {
     subtotaal: 0,
     btw: 0,
     totaal: 0,
+    daan_of_wim: "Beiden",
   });
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -74,6 +75,7 @@ export default function UploadExpensePage() {
         subtotaal: result.subtotaal || 0,
         btw: result.btw || 0,
         totaal: result.totaal || 0,
+        daan_of_wim: result.daan_of_wim || "Beiden",
       });
       setEditing(true);
       toast.success("PDF geüpload en uitgelezen");
@@ -261,6 +263,20 @@ export default function UploadExpensePage() {
                     setForm({ ...form, beschrijving: e.target.value })
                   }
                 />
+              </div>
+              <div>
+                <label className="label">Eigenaar</label>
+                <select
+                  className="input"
+                  value={form.daan_of_wim}
+                  onChange={(e) =>
+                    setForm({ ...form, daan_of_wim: e.target.value })
+                  }
+                >
+                  <option value="Beiden">Beiden</option>
+                  <option value="Daan">Daan</option>
+                  <option value="Wim">Wim</option>
+                </select>
               </div>
             </div>
 

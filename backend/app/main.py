@@ -9,7 +9,12 @@ from app.routers import invoices, expenses, customers, dashboard, settings
 
 # Initialize Firebase Admin
 if not firebase_admin._apps:
-    if os.path.exists(FIREBASE_CREDENTIALS_PATH):
+    firebase_creds_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
+    if firebase_creds_json:
+        import json
+        cred = credentials.Certificate(json.loads(firebase_creds_json))
+        firebase_admin.initialize_app(cred, {"storageBucket": FIREBASE_STORAGE_BUCKET})
+    elif os.path.exists(FIREBASE_CREDENTIALS_PATH):
         cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
         firebase_admin.initialize_app(cred, {"storageBucket": FIREBASE_STORAGE_BUCKET})
     else:

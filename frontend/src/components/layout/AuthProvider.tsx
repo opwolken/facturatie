@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { onAuthChange, User } from "@/lib/firebase";
+import { onAuthChange, signOut, User } from "@/lib/firebase";
+
+const ALLOWED_EMAILS = ["wim@opwolken.com", "daan@opwolken.com"];
 
 interface AuthContextType {
   user: User | null;
@@ -25,14 +27,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((user) => {
-      setUser(user);
+    const unsubscribe = onAuthChange(async (firebaseUser) => {
+      // Check of het e-mailadres is toegestaan
+      if (firebaseUser && !ALLOWED_EMAILS.includes(firebaseUser.email?.toLowerCase() || "")) {
+        await signOut();
+        setUser(null);
+        setLoading(false);
+        if (pathname !== "/login") {
+          router.push("/login");
+        }
+        return;
+      }
+
+      setUser(firebaseUser);
       setLoading(false);
 
-      if (!user && pathname !== "/login") {
+      if (!firebaseUser && pathname !== "/login") {
         router.push("/login");
       }
-      if (user && pathname === "/login") {
+      if (firebaseUser && pathname === "/login") {
         router.push("/");
       }
     });

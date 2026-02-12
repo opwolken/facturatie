@@ -1,14 +1,17 @@
 "use client";
 
-import { signInWithGoogle } from "@/lib/firebase";
+import { signInWithGoogle, signOut } from "@/lib/firebase";
 import { useAuth } from "@/components/layout/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const ALLOWED_EMAILS = ["wim@opwolken.com", "daan@opwolken.com"];
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -18,10 +21,20 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     setSigningIn(true);
+    setError(null);
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
+      const email = result.user.email?.toLowerCase() || "";
+
+      if (!ALLOWED_EMAILS.includes(email)) {
+        await signOut();
+        setError("Geen toegang. Alleen opwolken-accounts zijn toegestaan.");
+        setSigningIn(false);
+        return;
+      }
     } catch (error) {
       console.error("Login failed:", error);
+      setError("Inloggen mislukt. Probeer het opnieuw.");
       setSigningIn(false);
     }
   };
@@ -69,6 +82,12 @@ export default function LoginPage() {
             </svg>
             {signingIn ? "Bezig met inloggen..." : "Inloggen met Google"}
           </button>
+
+          {error && (
+            <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
         </div>
 
         <p className="mt-8 text-center text-xs text-gray-400">

@@ -1,12 +1,13 @@
 #!/bin/bash
 set -e
 
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ID="facturatie-b64d9"
 REGION="europe-west1"
 SERVICE_NAME="facturatie-api"
 
 echo "=== Stap 1: Backend deployen naar Cloud Run ==="
-cd "$(dirname "$0")/backend"
+cd "$ROOT_DIR/backend"
 
 gcloud run deploy $SERVICE_NAME \
   --source . \
@@ -28,10 +29,10 @@ echo "Backend URL: $BACKEND_URL"
 
 echo ""
 echo "=== Stap 2: Frontend deployen naar Firebase Hosting ==="
-cd "$(dirname "$0")/frontend"
+cd "$ROOT_DIR"
 
 export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
-NEXT_PUBLIC_API_URL="${BACKEND_URL}/api" BACKEND_URL=$BACKEND_URL firebase deploy --only hosting
+NEXT_PUBLIC_API_URL="${BACKEND_URL}/api" firebase deploy --only hosting --project $PROJECT_ID
 
 echo ""
 echo "=== Klaar! ==="

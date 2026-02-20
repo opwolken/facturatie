@@ -47,6 +47,12 @@ export const getFinancieelDashboard = (jaar?: number, kwartaal?: number) => {
   const qs = params.toString();
   return request(`/dashboard/financieel${qs ? `?${qs}` : ""}`);
 };
+export const getWinstVerlies = (jaar?: number) => {
+  const params = new URLSearchParams();
+  if (jaar) params.set("jaar", jaar.toString());
+  const qs = params.toString();
+  return request(`/dashboard/winst-verlies${qs ? `?${qs}` : ""}`);
+};
 
 // Invoices
 export const getInvoices = () => request("/invoices");

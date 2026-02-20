@@ -1,4 +1,5 @@
 import io
+import os
 from datetime import datetime
 
 import httpx
@@ -16,6 +17,9 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+LOCAL_LOGO = os.path.join(ASSETS_DIR, "logo.png")
 
 MAANDEN = [
     "januari", "februari", "maart", "april", "mei", "juni",
@@ -70,13 +74,23 @@ def _footer(canvas, doc, company):
 
 
 def _get_logo(company):
+    # Prefer bundled local logo
+    if os.path.exists(LOCAL_LOGO):
+        try:
+            img = Image(LOCAL_LOGO, width=20 * mm, height=20 * mm)
+            img.hAlign = "CENTER"
+            return img
+        except Exception:
+            pass
+
+    # Fallback: fetch from URL
     logo_url = company.get("logo_url")
     if not logo_url:
         return None
     try:
         resp = httpx.get(logo_url, timeout=5)
         if resp.status_code == 200:
-            img = Image(io.BytesIO(resp.content), width=25 * mm, height=18 * mm)
+            img = Image(io.BytesIO(resp.content), width=20 * mm, height=20 * mm)
             img.hAlign = "CENTER"
             return img
     except Exception:

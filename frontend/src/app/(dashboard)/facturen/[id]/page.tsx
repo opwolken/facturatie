@@ -356,7 +356,7 @@ export default function InvoiceDetailPage() {
       {/* Send email modal */}
       {showSendModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-lg mx-4 rounded-xl bg-white p-6 shadow-xl">
             <h2 className="mb-4 font-serif text-xl text-gray-900">Factuur versturen</h2>
             <div className="space-y-4">
               <div>

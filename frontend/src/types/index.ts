@@ -117,3 +117,32 @@ export interface FinancieelData {
   btw: BtwData;
   inkomstenbelasting: InkomstenBelasting;
 }
+
+export interface WinstVerliesBreakdownItem {
+  naam: string;
+  bedrag: number;
+}
+
+export interface WinstVerliesMaand {
+  maand: string;
+  omzet: number;
+  uitgaven: number;
+}
+
+export interface WinstVerliesPersoon {
+  omzet: number;
+  uitgaven: number;
+  winst: number;
+  belasting: number;
+  netto: number;
+  omzet_per_klant: WinstVerliesBreakdownItem[];
+  uitgaven_per_categorie: WinstVerliesBreakdownItem[];
+  maandoverzicht: WinstVerliesMaand[];
+}
+
+export interface WinstVerliesData {
+  jaar: number;
+  beschikbare_jaren: number[];
+  daan: WinstVerliesPersoon;
+  wim: WinstVerliesPersoon;
+}

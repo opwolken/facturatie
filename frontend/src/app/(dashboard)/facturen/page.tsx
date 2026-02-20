@@ -78,6 +78,13 @@ const invoiceColumns: ColumnDef<Invoice>[] = [
     sortValue: (inv) => inv.btw_totaal,
   },
   {
+    key: "daan_of_wim",
+    label: "Eigenaar",
+    render: (inv) => <span className="text-sm text-gray-600">{inv.daan_of_wim || "—"}</span>,
+    sortValue: (inv) => inv.daan_of_wim || "",
+    filterValue: (inv) => inv.daan_of_wim || "",
+  },
+  {
     key: "totaal",
     label: "Bedrag",
     align: "right",
@@ -95,6 +102,15 @@ const invoiceFilters: FilterOption[] = [
       { value: "verzonden", label: "Verzonden" },
       { value: "betaald", label: "Betaald" },
       { value: "verlopen", label: "Verlopen" },
+    ],
+  },
+  {
+    key: "daan_of_wim",
+    label: "Alle eigenaren",
+    options: [
+      { value: "Daan", label: "Daan" },
+      { value: "Wim", label: "Wim" },
+      { value: "Beiden", label: "Beiden" },
     ],
   },
 ];

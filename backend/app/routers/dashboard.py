@@ -336,3 +336,174 @@ async def get_financieel_dashboard(
             "bel_wim": bel_wim,
         },
     }
+
+
+@router.get("/winst-verlies")
+async def winst_verlies_detail(
+    jaar: Optional[int] = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    """Detailed profit & loss breakdown per person and category."""
+    db = get_db()
+    uid = user["uid"]
+
+    if jaar is None:
+        settings_doc = db.collection("company_settings").document(uid).get()
+        settings = settings_doc.to_dict() if settings_doc.exists else {}
+        jaar = settings.get("dashboard_jaar") or datetime.now(timezone.utc).year
+
+    # Fetch all invoices
+    invoices = list(
+        db.collection("invoices")
+        .where(filter=FieldFilter("user_id", "==", uid))
+        .stream()
+    )
+    invoice_data = [doc.to_dict() for doc in invoices]
+
+    # Fetch all expenses
+    expenses = list(
+        db.collection("expenses")
+        .where(filter=FieldFilter("user_id", "==", uid))
+        .stream()
+    )
+    expense_data = [doc.to_dict() for doc in expenses]
+
+    # Available years
+    all_years = set()
+    for inv in invoice_data:
+        y = get_year(inv.get("factuurdatum", ""))
+        if y:
+            all_years.add(y)
+    for exp in expense_data:
+        y = get_year(exp.get("datum", ""))
+        if y:
+            all_years.add(y)
+    beschikbare_jaren = sorted(all_years, reverse=True)
+
+    # Per-person income by client
+    ink_per_klant_daan = defaultdict(float)
+    ink_per_klant_wim = defaultdict(float)
+
+    for inv in invoice_data:
+        datum = inv.get("factuurdatum", "")
+        if get_year(datum) != jaar or inv.get("status") not in ("verzonden", "betaald"):
+            continue
+        subtotaal = inv.get("subtotaal", 0)
+        klant = inv.get("klant_naam", "Onbekend") or "Onbekend"
+        eigenaar = inv.get("daan_of_wim") or "Beiden"
+        if eigenaar == "Beiden":
+            ink_per_klant_daan[klant] += subtotaal / 2
+            ink_per_klant_wim[klant] += subtotaal / 2
+        elif eigenaar == "Daan":
+            ink_per_klant_daan[klant] += subtotaal
+        elif eigenaar == "Wim":
+            ink_per_klant_wim[klant] += subtotaal
+
+    # Per-person expenses by category
+    uit_per_cat_daan = defaultdict(float)
+    uit_per_cat_wim = defaultdict(float)
+
+    for exp in expense_data:
+        datum = exp.get("datum", "")
+        if get_year(datum) != jaar:
+            continue
+        subtotaal = exp.get("subtotaal", 0)
+        categorie = exp.get("categorie", "Overig") or "Overig"
+        eigenaar = exp.get("daan_of_wim") or "Beiden"
+        if eigenaar == "Beiden":
+            uit_per_cat_daan[categorie] += subtotaal / 2
+            uit_per_cat_wim[categorie] += subtotaal / 2
+        elif eigenaar == "Daan":
+            uit_per_cat_daan[categorie] += subtotaal
+        elif eigenaar == "Wim":
+            uit_per_cat_wim[categorie] += subtotaal
+
+    # Per-person monthly breakdown
+    maand_daan = defaultdict(lambda: {"omzet": 0.0, "uitgaven": 0.0})
+    maand_wim = defaultdict(lambda: {"omzet": 0.0, "uitgaven": 0.0})
+
+    for inv in invoice_data:
+        datum = inv.get("factuurdatum", "")
+        if get_year(datum) != jaar or inv.get("status") not in ("verzonden", "betaald"):
+            continue
+        maand = datum[:7]  # YYYY-MM
+        subtotaal = inv.get("subtotaal", 0)
+        eigenaar = inv.get("daan_of_wim") or "Beiden"
+        if eigenaar == "Beiden":
+            maand_daan[maand]["omzet"] += subtotaal / 2
+            maand_wim[maand]["omzet"] += subtotaal / 2
+        elif eigenaar == "Daan":
+            maand_daan[maand]["omzet"] += subtotaal
+        elif eigenaar == "Wim":
+            maand_wim[maand]["omzet"] += subtotaal
+
+    for exp in expense_data:
+        datum = exp.get("datum", "")
+        if get_year(datum) != jaar:
+            continue
+        maand = datum[:7]
+        subtotaal = exp.get("subtotaal", 0)
+        eigenaar = exp.get("daan_of_wim") or "Beiden"
+        if eigenaar == "Beiden":
+            maand_daan[maand]["uitgaven"] += subtotaal / 2
+            maand_wim[maand]["uitgaven"] += subtotaal / 2
+        elif eigenaar == "Daan":
+            maand_daan[maand]["uitgaven"] += subtotaal
+        elif eigenaar == "Wim":
+            maand_wim[maand]["uitgaven"] += subtotaal
+
+    # Build sorted lists
+    def sorted_breakdown(d):
+        return sorted(
+            [{"naam": k, "bedrag": round(v, 2)} for k, v in d.items()],
+            key=lambda x: x["bedrag"],
+            reverse=True,
+        )
+
+    def sorted_maanden(d):
+        all_months = []
+        for m in range(1, 13):
+            key = f"{jaar}-{m:02d}"
+            vals = d.get(key, {"omzet": 0.0, "uitgaven": 0.0})
+            all_months.append({
+                "maand": key,
+                "omzet": round(vals["omzet"], 2),
+                "uitgaven": round(vals["uitgaven"], 2),
+            })
+        return all_months
+
+    totaal_ink_daan = sum(ink_per_klant_daan.values())
+    totaal_ink_wim = sum(ink_per_klant_wim.values())
+    totaal_uit_daan = sum(uit_per_cat_daan.values())
+    totaal_uit_wim = sum(uit_per_cat_wim.values())
+    winst_daan = math.floor(totaal_ink_daan) - math.ceil(totaal_uit_daan)
+    winst_wim = math.floor(totaal_ink_wim) - math.ceil(totaal_uit_wim)
+
+    belasting_factor = 0.86 * (0.495 + 0.0532)
+    bel_daan = round(winst_daan * belasting_factor)
+    bel_wim = round(winst_wim * belasting_factor)
+
+    return {
+        "jaar": jaar,
+        "beschikbare_jaren": beschikbare_jaren,
+        "daan": {
+            "omzet": math.floor(totaal_ink_daan),
+            "uitgaven": math.ceil(totaal_uit_daan),
+            "winst": winst_daan,
+            "belasting": bel_daan,
+            "netto": winst_daan - bel_daan,
+            "omzet_per_klant": sorted_breakdown(ink_per_klant_daan),
+            "uitgaven_per_categorie": sorted_breakdown(uit_per_cat_daan),
+            "maandoverzicht": sorted_maanden(maand_daan),
+        },
+        "wim": {
+            "omzet": math.floor(totaal_ink_wim),
+            "uitgaven": math.ceil(totaal_uit_wim),
+            "winst": winst_wim,
+            "belasting": bel_wim,
+            "netto": winst_wim - bel_wim,
+            "omzet_per_klant": sorted_breakdown(ink_per_klant_wim),
+            "uitgaven_per_categorie": sorted_breakdown(uit_per_cat_wim),
+            "maandoverzicht": sorted_maanden(maand_wim),
+        },
+    }

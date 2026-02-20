@@ -86,6 +86,13 @@ const expenseColumns: ColumnDef<Expense>[] = [
     sortValue: (exp) => exp.btw,
   },
   {
+    key: "daan_of_wim",
+    label: "Eigenaar",
+    render: (exp) => <span className="text-sm text-gray-600">{exp.daan_of_wim || "—"}</span>,
+    sortValue: (exp) => exp.daan_of_wim || "",
+    filterValue: (exp) => exp.daan_of_wim || "",
+  },
+  {
     key: "totaal",
     label: "Bedrag",
     align: "right",
@@ -115,6 +122,15 @@ const expenseFilters: FilterOption[] = [
       { value: "Zakelijke diensten", label: "Zakelijke diensten" },
       { value: "Transport", label: "Transport" },
       { value: "Overig", label: "Overig" },
+    ],
+  },
+  {
+    key: "daan_of_wim",
+    label: "Alle eigenaren",
+    options: [
+      { value: "Daan", label: "Daan" },
+      { value: "Wim", label: "Wim" },
+      { value: "Beiden", label: "Beiden" },
     ],
   },
 ];

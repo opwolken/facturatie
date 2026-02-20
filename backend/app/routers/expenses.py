@@ -105,7 +105,7 @@ async def update_expense(
         raise HTTPException(status_code=404, detail="Uitgave niet gevonden")
 
     now = datetime.now(timezone.utc).isoformat()
-    data = {**expense.model_dump(), "updated_at": now}
+    data = {**expense.model_dump(exclude_unset=True), "updated_at": now}
     doc_ref.update(data)
     return {"id": expense_id, **doc.to_dict(), **data}
 

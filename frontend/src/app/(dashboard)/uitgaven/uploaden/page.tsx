@@ -204,7 +204,7 @@ export default function UploadExpensePage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="label">Leverancier</label>
                 <input
@@ -253,7 +253,7 @@ export default function UploadExpensePage() {
                   ))}
                 </select>
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="label">Omschrijving</label>
                 <input
                   type="text"
@@ -280,7 +280,7 @@ export default function UploadExpensePage() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <label className="label">Subtotaal (excl. BTW)</label>
                 <input

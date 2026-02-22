@@ -183,6 +183,41 @@ export default function ExpenseDetailPage() {
             </div>
           )}
 
+          {/* Afschrijving */}
+          {expense.afschrijving && (
+            <div className="card">
+              <h2 className="text-sm font-medium text-gray-700 mb-4">Afschrijving</h2>
+              <dl className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-500">Afschrijvingstermijn</dt>
+                  <dd className="font-medium text-gray-900">{expense.afschrijving_jaren} jaar</dd>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-500">Restwaarde</dt>
+                  <dd className="font-medium text-gray-900">{formatCurrency(expense.afschrijving_restwaarde || 0)}</dd>
+                </div>
+                <div className="border-t border-gray-100 pt-2">
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span className="text-gray-900">Jaarlijkse afschrijving</span>
+                    <span className="text-gray-900">
+                      {expense.afschrijving_jaren
+                        ? formatCurrency((expense.subtotaal - (expense.afschrijving_restwaarde || 0)) / expense.afschrijving_jaren)
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
+                {expense.datum && expense.afschrijving_jaren && (
+                  <div className="flex justify-between text-sm">
+                    <dt className="text-gray-500">Periode</dt>
+                    <dd className="font-medium text-gray-900">
+                      {expense.datum.slice(0, 4)} t/m {parseInt(expense.datum.slice(0, 4)) + expense.afschrijving_jaren - 1}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+
           {/* Danger zone */}
           <div className="border-t border-gray-100 pt-4">
             <button onClick={handleDelete} className="text-sm text-red-500 hover:text-red-700">

@@ -21,7 +21,14 @@ const expenseColumns: ColumnDef<Expense>[] = [
     label: "Leverancier",
     render: (exp) => (
       <div>
-        <p className="text-sm font-medium text-gray-900 hover:text-brand-600">{exp.leverancier || "Onbekend"}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium text-gray-900 hover:text-brand-600">{exp.leverancier || "Onbekend"}</p>
+          {exp.afschrijving && (
+            <span className="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+              Afschr.
+            </span>
+          )}
+        </div>
         {exp.factuurnummer && (
           <p className="text-xs text-gray-500">#{exp.factuurnummer}</p>
         )}

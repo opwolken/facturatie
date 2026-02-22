@@ -13,6 +13,9 @@ class ExpenseCreate(BaseModel):
     totaal: float = 0
     status: str = "nieuw"
     daan_of_wim: Optional[str] = "Beiden"
+    afschrijving: bool = False
+    afschrijving_jaren: Optional[int] = None
+    afschrijving_restwaarde: Optional[float] = 0
 
 
 class ExpenseUpdate(ExpenseCreate):

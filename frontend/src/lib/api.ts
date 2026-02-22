@@ -115,3 +115,18 @@ export const deleteCustomer = (id: string) =>
 export const getPreferences = () => request("/preferences");
 export const savePreferences = (data: Record<string, string[]>) =>
   request("/preferences", { method: "PUT", body: JSON.stringify(data) });
+
+// Jaarcijfers
+export const getJaarcijfers = (jaar: number) =>
+  request(`/jaarcijfers/${jaar}`);
+export const getJaarcijfersOverzicht = () =>
+  request(`/jaarcijfers/overzicht`);
+export const uploadBankCsv = (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return request("/jaarcijfers/upload-csv", { method: "POST", body: formData });
+};
+export const getBankStatus = () =>
+  request("/jaarcijfers/bank-status");
+export const deleteBankAccount = (id: string) =>
+  request(`/jaarcijfers/bank/${id}`, { method: "DELETE" });

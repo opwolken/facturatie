@@ -24,6 +24,9 @@ export default function EditExpensePage() {
     totaal: 0,
     status: "nieuw",
     daan_of_wim: "Beiden",
+    afschrijving: false,
+    afschrijving_jaren: null as number | null,
+    afschrijving_restwaarde: 0,
   });
 
   useEffect(() => {
@@ -41,6 +44,9 @@ export default function EditExpensePage() {
           totaal: exp.totaal || 0,
           status: exp.status || "nieuw",
           daan_of_wim: exp.daan_of_wim || "Beiden",
+          afschrijving: exp.afschrijving || false,
+          afschrijving_jaren: exp.afschrijving_jaren || null,
+          afschrijving_restwaarde: exp.afschrijving_restwaarde || 0,
         });
       })
       .catch((e) => toast.error(e.message))
@@ -205,6 +211,76 @@ export default function EditExpensePage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Afschrijving */}
+        <div className="card mb-6">
+          <h2 className="text-sm font-medium text-gray-700 mb-4">Afschrijving</h2>
+          <div className="flex items-center gap-3 mb-4">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={form.afschrijving}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    afschrijving: e.target.checked,
+                    afschrijving_jaren: e.target.checked ? (form.afschrijving_jaren || 5) : null,
+                    afschrijving_restwaarde: e.target.checked ? form.afschrijving_restwaarde : 0,
+                  })
+                }
+              />
+              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gray-900" />
+            </label>
+            <span className="text-sm text-gray-600">
+              Deze uitgave afschrijven over meerdere jaren
+            </span>
+          </div>
+          {form.afschrijving && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="label">Aantal jaren</label>
+                <input
+                  type="number"
+                  className="input"
+                  min="1"
+                  max="30"
+                  step="1"
+                  value={form.afschrijving_jaren || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, afschrijving_jaren: parseInt(e.target.value) || null })
+                  }
+                />
+              </div>
+              <div>
+                <label className="label">Restwaarde</label>
+                <input
+                  type="number"
+                  className="input"
+                  min="0"
+                  step="0.01"
+                  value={form.afschrijving_restwaarde}
+                  onChange={(e) =>
+                    setForm({ ...form, afschrijving_restwaarde: parseFloat(e.target.value) || 0 })
+                  }
+                />
+              </div>
+              <div>
+                <label className="label">Jaarlijkse afschrijving</label>
+                <input
+                  type="text"
+                  className="input bg-gray-50"
+                  value={
+                    form.afschrijving_jaren
+                      ? `€ ${((form.subtotaal - (form.afschrijving_restwaarde || 0)) / form.afschrijving_jaren).toFixed(2)}`
+                      : "—"
+                  }
+                  readOnly
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Beschrijving */}

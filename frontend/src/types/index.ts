@@ -60,6 +60,9 @@ export interface Expense {
   totaal: number;
   status: "nieuw" | "goedgekeurd" | "betaald";
   daan_of_wim: "Daan" | "Wim" | "Beiden" | null;
+  afschrijving: boolean;
+  afschrijving_jaren: number | null;
+  afschrijving_restwaarde: number | null;
   pdf_url: string | null;
   user_id: string;
   created_at: string;
@@ -145,4 +148,89 @@ export interface WinstVerliesData {
   beschikbare_jaren: number[];
   daan: WinstVerliesPersoon;
   wim: WinstVerliesPersoon;
+}
+
+// === Jaarcijfers ===
+
+export interface BalansPost {
+  begin: number | null;
+  eind: number | null;
+}
+
+export interface JaarcijfersWinstVerlies {
+  omzet: number;
+  omzet_btw: number;
+  kosten_direct: number;
+  afschrijvingen: number;
+  totaal_kosten: number;
+  winst: number;
+  mkb_vrijstelling: number;
+  mkb_percentage: number;
+  belastbare_winst: number;
+  omzet_per_klant: WinstVerliesBreakdownItem[];
+  kosten_per_categorie: WinstVerliesBreakdownItem[];
+}
+
+export interface JaarcijfersBalans {
+  activa: {
+    mva: BalansPost;
+    debiteuren: BalansPost;
+    liquide_middelen: BalansPost;
+    totaal: BalansPost;
+  };
+  passiva: {
+    eigen_vermogen: BalansPost;
+    crediteuren: BalansPost;
+    btw_schuld: BalansPost;
+    kortlopend_totaal: BalansPost;
+    totaal: BalansPost;
+  };
+}
+
+export interface MVAItem {
+  id: string;
+  leverancier: string;
+  beschrijving: string;
+  datum: string;
+  categorie: string;
+  aanschafwaarde: number;
+  restwaarde: number;
+  jaren: number;
+  jaarlijkse_afschrijving: number;
+  boekwaarde_begin: number;
+  boekwaarde_eind: number;
+  afschrijving_dit_jaar: number;
+}
+
+export interface MVAOverzicht {
+  items: MVAItem[];
+  totaal_boekwaarde_begin: number;
+  totaal_boekwaarde_eind: number;
+  totaal_afschrijving: number;
+  totaal_aanschaf_dit_jaar: number;
+}
+
+export interface JaarcijfersData {
+  jaar: number;
+  beschikbare_jaren: number[];
+  winst_verlies: JaarcijfersWinstVerlies;
+  balans: JaarcijfersBalans;
+  mva: MVAOverzicht;
+  bron?: "berekend" | "accountant";
+}
+
+export interface BankAccountStatus {
+  account_number: string;
+  account_name: string;
+  min_date: string;
+  max_date: string;
+  transaction_count?: number;
+  uploaded_at?: string;
+  id?: string;
+}
+
+export interface JaarcijfersOverzicht {
+  beschikbare_jaren: number[];
+  jaren: Record<number, JaarcijfersData>;
+  bank_status?: BankAccountStatus[];
 }

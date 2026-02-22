@@ -32,6 +32,63 @@ def get_year(date_str: str) -> int:
         return 0
 
 
+def get_month(date_str: str) -> str:
+    """Get YYYY-MM from a date string YYYY-MM-DD."""
+    try:
+        return date_str[:7]
+    except (ValueError, IndexError):
+        return ""
+
+
+def get_expense_amount_for_year(exp: dict, target_year: int) -> float:
+    """Calculate the expense amount attributable to a given year.
+
+    For normal expenses: full subtotaal if the expense year matches.
+    For depreciated expenses: annual depreciation portion for each applicable year.
+    """
+    datum = exp.get("datum", "")
+    exp_year = get_year(datum)
+
+    if not exp.get("afschrijving"):
+        # Normal expense: only counts in its own year
+        return exp.get("subtotaal", 0) if exp_year == target_year else 0.0
+
+    # Depreciation: spread over multiple years
+    jaren = exp.get("afschrijving_jaren") or 1
+    restwaarde = exp.get("afschrijving_restwaarde") or 0
+    subtotaal = exp.get("subtotaal", 0)
+    jaarlijks = (subtotaal - restwaarde) / jaren
+
+    # Depreciation starts in the year of purchase and runs for `jaren` years
+    if exp_year <= target_year < exp_year + jaren:
+        return jaarlijks
+    return 0.0
+
+
+def get_expense_amount_for_month(exp: dict, target_year: int, target_month: str) -> float:
+    """Calculate the expense amount attributable to a given month.
+
+    For normal expenses: full subtotaal if the expense month matches.
+    For depreciated expenses: monthly depreciation portion (annual / 12) for applicable months.
+    """
+    datum = exp.get("datum", "")
+    exp_year = get_year(datum)
+    exp_month = get_month(datum)
+
+    if not exp.get("afschrijving"):
+        return exp.get("subtotaal", 0) if exp_month == target_month else 0.0
+
+    # Depreciation: spread evenly across months over multiple years
+    jaren = exp.get("afschrijving_jaren") or 1
+    restwaarde = exp.get("afschrijving_restwaarde") or 0
+    subtotaal = exp.get("subtotaal", 0)
+    maandelijks = (subtotaal - restwaarde) / jaren / 12
+
+    if exp_year <= target_year < exp_year + jaren:
+        return maandelijks
+    return 0.0
+
+
 @router.get("")
 async def get_dashboard(
     jaar: Optional[int] = Query(None),
@@ -69,10 +126,10 @@ async def get_dashboard(
     )
     all_expense_data = [doc.to_dict() for doc in expenses]
 
-    # Filter expenses by year
+    # Filter expenses by year (include all for depreciation calculation)
     expense_data = [
         exp for exp in all_expense_data
-        if get_year(exp.get("datum", "")) == jaar
+        if get_year(exp.get("datum", "")) == jaar and not exp.get("afschrijving")
     ]
 
     # Calculate totals (excl BTW for financial reporting)
@@ -91,7 +148,13 @@ async def get_dashboard(
         for inv in invoice_data
         if inv.get("status") == "verzonden"
     )
+    # Normal expenses + depreciation portions for this year
     totaal_uitgaven = sum(exp.get("subtotaal", 0) for exp in expense_data)
+    totaal_uitgaven += sum(
+        get_expense_amount_for_year(exp, jaar)
+        for exp in all_expense_data
+        if exp.get("afschrijving")
+    )
     winst = totaal_betaald - totaal_uitgaven
 
     # Monthly revenue (last 12 months)
@@ -114,6 +177,15 @@ async def get_dashboard(
             except (ValueError, TypeError):
                 pass
 
+    # Add depreciation portions per month
+    for exp in all_expense_data:
+        if exp.get("afschrijving"):
+            for m in range(1, 13):
+                month_key = f"{jaar}-{m:02d}"
+                amount = get_expense_amount_for_month(exp, jaar, month_key)
+                if amount > 0:
+                    uitgaven_per_maand[month_key] += amount
+
     # Combine and sort months
     all_months = sorted(set(list(omzet_per_maand.keys()) + list(uitgaven_per_maand.keys())))[-12:]
     maandoverzicht = [
@@ -130,6 +202,13 @@ async def get_dashboard(
     for exp in expense_data:
         cat = exp.get("categorie", "Overig") or "Overig"
         categorie_totalen[cat] += exp.get("subtotaal", 0)
+    # Add depreciation portions
+    for exp in all_expense_data:
+        if exp.get("afschrijving"):
+            amount = get_expense_amount_for_year(exp, jaar)
+            if amount > 0:
+                cat = exp.get("categorie", "Afschrijvingen") or "Afschrijvingen"
+                categorie_totalen[cat] += amount
     categorieën = [
         {"categorie": k, "totaal": round(v, 2)}
         for k, v in sorted(categorie_totalen.items(), key=lambda x: -x[1])
@@ -238,9 +317,8 @@ async def get_financieel_dashboard(
             wv_inkomsten += inv.get("subtotaal", 0)
 
     for exp in expense_data:
-        datum = exp.get("datum", "")
-        if get_year(datum) == jaar:
-            wv_uitgaven += exp.get("subtotaal", 0)
+        # Use depreciation-aware amount for each expense
+        wv_uitgaven += get_expense_amount_for_year(exp, jaar)
 
     wv_winst = wv_inkomsten - wv_uitgaven
 
@@ -288,17 +366,18 @@ async def get_financieel_dashboard(
                 ink_wim += subtotaal
 
     for exp in expense_data:
-        datum = exp.get("datum", "")
-        if get_year(datum) == jaar:
-            subtotaal = exp.get("subtotaal", 0)
-            eigenaar = exp.get("daan_of_wim") or "Beiden"
-            if eigenaar == "Beiden":
-                uit_daan += subtotaal / 2
-                uit_wim += subtotaal / 2
-            elif eigenaar == "Daan":
-                uit_daan += subtotaal
-            elif eigenaar == "Wim":
-                uit_wim += subtotaal
+        # Use depreciation-aware amount for inkomstenbelasting
+        subtotaal = get_expense_amount_for_year(exp, jaar)
+        if subtotaal == 0:
+            continue
+        eigenaar = exp.get("daan_of_wim") or "Beiden"
+        if eigenaar == "Beiden":
+            uit_daan += subtotaal / 2
+            uit_wim += subtotaal / 2
+        elif eigenaar == "Daan":
+            uit_daan += subtotaal
+        elif eigenaar == "Wim":
+            uit_wim += subtotaal
 
     winst_daan = math.floor(ink_daan) - math.ceil(uit_daan)
     winst_wim = math.floor(ink_wim) - math.ceil(uit_wim)
@@ -368,7 +447,7 @@ async def winst_verlies_detail(
     )
     expense_data = [doc.to_dict() for doc in expenses]
 
-    # Available years
+    # Available years (include depreciation years)
     all_years = set()
     for inv in invoice_data:
         y = get_year(inv.get("factuurdatum", ""))
@@ -378,6 +457,10 @@ async def winst_verlies_detail(
         y = get_year(exp.get("datum", ""))
         if y:
             all_years.add(y)
+            if exp.get("afschrijving"):
+                jaren = exp.get("afschrijving_jaren") or 1
+                for offset in range(jaren):
+                    all_years.add(y + offset)
     beschikbare_jaren = sorted(all_years, reverse=True)
 
     # Per-person income by client
@@ -399,16 +482,17 @@ async def winst_verlies_detail(
         elif eigenaar == "Wim":
             ink_per_klant_wim[klant] += subtotaal
 
-    # Per-person expenses by category
+    # Per-person expenses by category (depreciation-aware)
     uit_per_cat_daan = defaultdict(float)
     uit_per_cat_wim = defaultdict(float)
 
     for exp in expense_data:
-        datum = exp.get("datum", "")
-        if get_year(datum) != jaar:
+        subtotaal = get_expense_amount_for_year(exp, jaar)
+        if subtotaal == 0:
             continue
-        subtotaal = exp.get("subtotaal", 0)
         categorie = exp.get("categorie", "Overig") or "Overig"
+        if exp.get("afschrijving"):
+            categorie = f"Afschrijving: {categorie}"
         eigenaar = exp.get("daan_of_wim") or "Beiden"
         if eigenaar == "Beiden":
             uit_per_cat_daan[categorie] += subtotaal / 2
@@ -438,19 +522,20 @@ async def winst_verlies_detail(
             maand_wim[maand]["omzet"] += subtotaal
 
     for exp in expense_data:
-        datum = exp.get("datum", "")
-        if get_year(datum) != jaar:
-            continue
-        maand = datum[:7]
-        subtotaal = exp.get("subtotaal", 0)
+        # Use depreciation-aware monthly amounts
         eigenaar = exp.get("daan_of_wim") or "Beiden"
-        if eigenaar == "Beiden":
-            maand_daan[maand]["uitgaven"] += subtotaal / 2
-            maand_wim[maand]["uitgaven"] += subtotaal / 2
-        elif eigenaar == "Daan":
-            maand_daan[maand]["uitgaven"] += subtotaal
-        elif eigenaar == "Wim":
-            maand_wim[maand]["uitgaven"] += subtotaal
+        for m in range(1, 13):
+            month_key = f"{jaar}-{m:02d}"
+            subtotaal = get_expense_amount_for_month(exp, jaar, month_key)
+            if subtotaal == 0:
+                continue
+            if eigenaar == "Beiden":
+                maand_daan[month_key]["uitgaven"] += subtotaal / 2
+                maand_wim[month_key]["uitgaven"] += subtotaal / 2
+            elif eigenaar == "Daan":
+                maand_daan[month_key]["uitgaven"] += subtotaal
+            elif eigenaar == "Wim":
+                maand_wim[month_key]["uitgaven"] += subtotaal
 
     # Build sorted lists
     def sorted_breakdown(d):

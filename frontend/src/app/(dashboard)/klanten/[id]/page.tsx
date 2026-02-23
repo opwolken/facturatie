@@ -24,6 +24,7 @@ export default function EditCustomerPage() {
     land: "Nederland",
     kvk_nummer: "",
     btw_nummer: "",
+    iban: "",
     notities: "",
   });
 
@@ -43,6 +44,7 @@ export default function EditCustomerPage() {
           land: c.land || "Nederland",
           kvk_nummer: c.kvk_nummer || "",
           btw_nummer: c.btw_nummer || "",
+          iban: c.iban || "",
           notities: c.notities || "",
         });
       })
@@ -212,6 +214,17 @@ export default function EditCustomerPage() {
                 value={form.btw_nummer}
                 onChange={(e) => update("btw_nummer", e.target.value)}
               />
+            </div>
+            <div className="col-span-2">
+              <label className="label">IBAN</label>
+              <input
+                type="text"
+                className="input font-mono"
+                placeholder="NL00INGB0000000000"
+                value={form.iban}
+                onChange={(e) => update("iban", e.target.value)}
+              />
+              <p className="text-xs text-gray-400 mt-1">Wordt automatisch ingevuld via bank matching</p>
             </div>
           </div>
         </div>

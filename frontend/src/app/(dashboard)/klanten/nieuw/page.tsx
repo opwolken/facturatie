@@ -21,6 +21,7 @@ export default function NewCustomerPage() {
     land: "Nederland",
     kvk_nummer: "",
     btw_nummer: "",
+    iban: "",
     notities: "",
   });
 
@@ -177,6 +178,16 @@ export default function NewCustomerPage() {
                 placeholder="NL000000000B00"
                 value={form.btw_nummer}
                 onChange={(e) => update("btw_nummer", e.target.value)}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="label">IBAN</label>
+              <input
+                type="text"
+                className="input font-mono"
+                placeholder="NL00INGB0000000000"
+                value={form.iban}
+                onChange={(e) => update("iban", e.target.value)}
               />
             </div>
           </div>

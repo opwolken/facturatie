@@ -81,6 +81,14 @@ const customerColumns: ColumnDef<Customer>[] = [
     sortValue: (c) => c.btw_nummer || "",
     filterValue: (c) => c.btw_nummer || "",
   },
+  {
+    key: "iban",
+    label: "IBAN",
+    defaultVisible: false,
+    render: (c) => <span className="text-sm text-gray-600 font-mono">{c.iban || "—"}</span>,
+    sortValue: (c) => c.iban || "",
+    filterValue: (c) => c.iban || "",
+  },
 ];
 
 export default function CustomersPage() {

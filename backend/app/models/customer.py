@@ -14,6 +14,7 @@ class CustomerCreate(BaseModel):
     land: Optional[str] = "Nederland"
     kvk_nummer: Optional[str] = ""
     btw_nummer: Optional[str] = ""
+    iban: Optional[str] = ""
     notities: Optional[str] = ""
 
 

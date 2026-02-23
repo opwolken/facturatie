@@ -5,7 +5,7 @@ import firebase_admin
 from firebase_admin import credentials
 
 from app.config import FIREBASE_CREDENTIALS_PATH, FIREBASE_STORAGE_BUCKET, CORS_ORIGINS
-from app.routers import invoices, expenses, customers, dashboard, settings, preferences, import_data, jaarcijfers
+from app.routers import invoices, expenses, customers, dashboard, settings, preferences, import_data, jaarcijfers, bank_matching
 
 # Initialize Firebase Admin
 if not firebase_admin._apps:
@@ -38,6 +38,7 @@ app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(preferences.router, prefix="/api/preferences", tags=["preferences"])
 app.include_router(import_data.router, prefix="/api/import", tags=["import"])
 app.include_router(jaarcijfers.router, prefix="/api/jaarcijfers", tags=["jaarcijfers"])
+app.include_router(bank_matching.router, prefix="/api/bank-matching", tags=["bank-matching"])
 
 
 @app.get("/api/health")

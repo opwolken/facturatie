@@ -425,6 +425,9 @@ def _detect_and_parse_csv(content: str) -> tuple[str, str, list[dict]]:
         omschrijving = row.get("Naam / Omschrijving", "") or row.get("Omschrijving", "")
         omschrijving = omschrijving.strip('"')
 
+        tegenrekening = row.get("Tegenrekening", "").strip('"')
+        mededelingen = row.get("Mededelingen", "").strip('"')
+
         transactions.append({
             "datum": datum,
             "omschrijving": omschrijving,
@@ -432,6 +435,8 @@ def _detect_and_parse_csv(content: str) -> tuple[str, str, list[dict]]:
             "saldo_na_mutatie": round(saldo, 2),
             "af_bij": af_bij,
             "mutatiesoort": row.get("Mutatiesoort", "").strip('"'),
+            "tegenrekening": tegenrekening,
+            "mededelingen": mededelingen,
         })
 
     if not account_name:

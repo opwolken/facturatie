@@ -130,3 +130,29 @@ export const getBankStatus = () =>
   request("/jaarcijfers/bank-status");
 export const deleteBankAccount = (id: string) =>
   request(`/jaarcijfers/bank/${id}`, { method: "DELETE" });
+
+// Bank Matching
+export const runBankMatching = () =>
+  request("/bank-matching/run", { method: "POST" });
+export const manualMatch = (invoiceId: string, transactionIds: string[]) =>
+  request("/bank-matching/manual", {
+    method: "POST",
+    body: JSON.stringify({ invoice_id: invoiceId, transaction_ids: transactionIds }),
+  });
+export const partialPaymentMatch = (invoiceId: string, transactionIds: string[]) =>
+  request("/bank-matching/partial", {
+    method: "POST",
+    body: JSON.stringify({ invoice_id: invoiceId, transaction_ids: transactionIds }),
+  });
+export const getMatchSuggestions = (invoiceId: string) =>
+  request(`/bank-matching/suggestions/${invoiceId}`);
+export const getMatchingStatus = () =>
+  request("/bank-matching/status");
+export const getAvailableTransactions = (search?: string) => {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  const qs = params.toString();
+  return request(`/bank-matching/transactions${qs ? `?${qs}` : ""}`);
+};
+export const unmatchInvoice = (invoiceId: string) =>
+  request(`/bank-matching/match/${invoiceId}`, { method: "DELETE" });

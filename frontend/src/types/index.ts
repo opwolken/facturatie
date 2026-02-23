@@ -11,6 +11,7 @@ export interface Customer {
   land: string;
   kvk_nummer: string;
   btw_nummer: string;
+  iban: string;
   notities: string;
   user_id: string;
   created_at: string;

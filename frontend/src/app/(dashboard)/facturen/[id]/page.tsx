@@ -10,15 +10,30 @@ import {
   deleteInvoice,
   generateInvoicePdf,
   sendInvoice,
+  getMatchSuggestions,
+  getAvailableTransactions,
+  manualMatch,
+  partialPaymentMatch,
 } from "@/lib/api";
 import { Invoice, Customer } from "@/types";
 import {
   formatCurrency,
   formatDate,
+  formatDateShort,
   getStatusColor,
   getStatusLabel,
 } from "@/lib/utils";
 import toast from "react-hot-toast";
+
+interface BankTransaction {
+  id: string;
+  datum: string;
+  bedrag: number;
+  omschrijving: string;
+  tegenrekening?: string;
+  mededelingen?: string;
+  score?: number;
+}
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -30,6 +45,17 @@ export default function InvoiceDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [emailForm, setEmailForm] = useState({ onderwerp: "", bericht: "" });
+
+  // Bank matching state
+  const [showMatching, setShowMatching] = useState(false);
+  const [suggestions, setSuggestions] = useState<BankTransaction[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<BankTransaction[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+  const [partialMode, setPartialMode] = useState(false);
+  const [matching, setMatching] = useState(false);
 
   useEffect(() => {
     getInvoice(params.id as string)
@@ -92,6 +118,82 @@ export default function InvoiceDetailPage() {
       toast.error(e.message);
     } finally {
       setSending(false);
+    }
+  };
+
+  const loadSuggestions = async () => {
+    setSuggestionsLoading(true);
+    try {
+      const data = (await getMatchSuggestions(params.id as string)) as {
+        suggestions: BankTransaction[];
+      };
+      setSuggestions(data.suggestions);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const handleSearchTransactions = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const data = (await getAvailableTransactions(query)) as {
+        transactions: BankTransaction[];
+        total: number;
+      };
+      setSearchResults(data.transactions);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const toggleTx = (txId: string) => {
+    if (partialMode) {
+      setSelectedTxIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(txId)) next.delete(txId);
+        else next.add(txId);
+        return next;
+      });
+    } else {
+      setSelectedTxIds(new Set([txId]));
+    }
+  };
+
+  const handleMatch = async () => {
+    const txIds = Array.from(selectedTxIds);
+    if (txIds.length === 0) {
+      toast.error("Selecteer minimaal één transactie");
+      return;
+    }
+    setMatching(true);
+    try {
+      if (partialMode) {
+        await partialPaymentMatch(params.id as string, txIds);
+        toast.success("Deelbetaling gekoppeld");
+      } else {
+        await manualMatch(params.id as string, txIds);
+        toast.success("Factuur gekoppeld aan betaling");
+      }
+      const updated = await getInvoice(params.id as string);
+      setInvoice(updated as Invoice);
+      setShowMatching(false);
+      setSelectedTxIds(new Set());
+      setSuggestions([]);
+      setSearchResults([]);
+      setSearchQuery("");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setMatching(false);
     }
   };
 
@@ -172,16 +274,260 @@ export default function InvoiceDetailPage() {
               </button>
             )}
             {invoice.status === "verzonden" && (
-              <button
-                onClick={() => handleStatusChange("betaald")}
-                className="btn-primary"
-              >
-                Markeer als betaald
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setShowMatching(!showMatching);
+                    if (!showMatching && suggestions.length === 0) {
+                      loadSuggestions();
+                    }
+                  }}
+                  className="btn-secondary"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                  </svg>
+                  Betaling zoeken
+                </button>
+                <button
+                  onClick={() => handleStatusChange("betaald")}
+                  className="btn-primary"
+                >
+                  Markeer als betaald
+                </button>
+              </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Bank matching panel */}
+      {showMatching && invoice.status === "verzonden" && (
+        <div className="mb-6 card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900">
+              Betaling zoeken
+            </h2>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={partialMode}
+                  onChange={() => setPartialMode(!partialMode)}
+                  className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span className="text-gray-600">Deelbetaling</span>
+              </label>
+              <button
+                onClick={() => setShowMatching(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Suggestions */}
+          {suggestionsLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
+            </div>
+          ) : suggestions.length > 0 ? (
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                Top suggesties op basis van match-score:
+              </p>
+              <div className="space-y-2 mb-4">
+                {suggestions.map((tx) => {
+                  const isSelected = selectedTxIds.has(tx.id);
+                  const amountMatch =
+                    Math.abs(Math.abs(tx.bedrag) - (invoice?.totaal ?? 0)) < 0.05;
+                  return (
+                    <div
+                      key={tx.id}
+                      onClick={() => toggleTx(tx.id)}
+                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? "border-brand-500 bg-brand-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type={partialMode ? "checkbox" : "radio"}
+                        name="match-tx"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {formatDateShort(tx.datum)}
+                          </span>
+                          <span
+                            className={`text-sm font-semibold ${
+                              amountMatch ? "text-green-600" : "text-gray-900"
+                            }`}
+                          >
+                            {formatCurrency(Math.abs(tx.bedrag))}
+                          </span>
+                          {amountMatch && (
+                            <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                              Bedrag klopt
+                            </span>
+                          )}
+                          {tx.score !== undefined && (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                              Score: {tx.score}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {tx.omschrijving}
+                        </p>
+                        {tx.mededelingen && (
+                          <p className="text-xs text-gray-400 truncate mt-0.5">
+                            {tx.mededelingen}
+                          </p>
+                        )}
+                        {tx.tegenrekening && (
+                          <p className="text-xs text-gray-400 font-mono mt-0.5">
+                            IBAN: {tx.tegenrekening}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 py-2 mb-4">
+              Geen automatische suggesties gevonden.
+            </p>
+          )}
+
+          {/* Search */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Zoek in alle beschikbare transacties:
+            </p>
+            <input
+              type="text"
+              placeholder="Zoek op bedrag, naam, IBAN, datum..."
+              value={searchQuery}
+              onChange={(e) => handleSearchTransactions(e.target.value)}
+              className="input mb-3"
+            />
+            {searchLoading && (
+              <div className="flex justify-center py-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
+              </div>
+            )}
+            {searchResults.length > 0 && (
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {searchResults.map((tx) => {
+                  const isSelected = selectedTxIds.has(tx.id);
+                  const amountMatch =
+                    Math.abs(Math.abs(tx.bedrag) - (invoice?.totaal ?? 0)) < 0.05;
+                  return (
+                    <div
+                      key={tx.id}
+                      onClick={() => toggleTx(tx.id)}
+                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? "border-brand-500 bg-brand-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type={partialMode ? "checkbox" : "radio"}
+                        name="search-match-tx"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {formatDateShort(tx.datum)}
+                          </span>
+                          <span
+                            className={`text-sm font-semibold ${
+                              amountMatch ? "text-green-600" : "text-gray-900"
+                            }`}
+                          >
+                            {formatCurrency(Math.abs(tx.bedrag))}
+                          </span>
+                          {amountMatch && (
+                            <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                              Bedrag klopt
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {tx.omschrijving}
+                        </p>
+                        {tx.mededelingen && (
+                          <p className="text-xs text-gray-400 truncate mt-0.5">
+                            {tx.mededelingen}
+                          </p>
+                        )}
+                        {tx.tegenrekening && (
+                          <p className="text-xs text-gray-400 font-mono mt-0.5">
+                            IBAN: {tx.tegenrekening}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {searchQuery.trim() && !searchLoading && searchResults.length === 0 && (
+              <p className="text-sm text-gray-400 py-2 text-center">
+                Geen transacties gevonden voor &quot;{searchQuery}&quot;
+              </p>
+            )}
+          </div>
+
+          {/* Confirm match */}
+          {selectedTxIds.size > 0 && (
+            <div className="mt-4 flex items-center justify-between border-t pt-4">
+              <div className="text-sm text-gray-600">
+                {partialMode ? (
+                  <>
+                    <span>{selectedTxIds.size} transactie(s) geselecteerd</span>
+                    <span className="ml-2 font-semibold">
+                      Totaal:{" "}
+                      {formatCurrency(
+                        [...suggestions, ...searchResults]
+                          .filter((tx) => selectedTxIds.has(tx.id))
+                          .reduce((sum, tx) => sum + Math.abs(tx.bedrag), 0)
+                      )}
+                    </span>
+                  </>
+                ) : (
+                  <span>1 transactie geselecteerd</span>
+                )}
+              </div>
+              <button
+                onClick={handleMatch}
+                disabled={matching}
+                className="btn-primary text-sm"
+              >
+                {matching ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  "Koppelen"
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main content: 50/50 split */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

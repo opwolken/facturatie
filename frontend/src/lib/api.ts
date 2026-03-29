@@ -1,11 +1,11 @@
 import { getIdToken } from "./firebase";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+import { getApiBase } from "./apiBase";
 
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const apiBase = getApiBase();
   const token = await getIdToken();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
@@ -20,7 +20,7 @@ async function request<T>(
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase}${path}`, {
     ...options,
     headers,
   });
@@ -64,11 +64,12 @@ export const updateInvoice = (id: string, data: any) =>
 export const deleteInvoice = (id: string) =>
   request(`/invoices/${id}`, { method: "DELETE" });
 export const generateInvoicePdf = async (id: string): Promise<void> => {
+  const apiBase = getApiBase();
   const token = await getIdToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}/invoices/${id}/pdf`, { method: "POST", headers });
+  const res = await fetch(`${apiBase}/invoices/${id}/pdf`, { method: "POST", headers });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Er ging iets mis" }));
     throw new Error(error.detail || `HTTP ${res.status}`);
@@ -130,6 +131,26 @@ export const getBankStatus = () =>
   request("/jaarcijfers/bank-status");
 export const deleteBankAccount = (id: string) =>
   request(`/jaarcijfers/bank/${id}`, { method: "DELETE" });
+export const exportJaarcijfers = async (jaar: number): Promise<void> => {
+  const apiBase = getApiBase();
+  const token = await getIdToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${apiBase}/jaarcijfers/${jaar}/export`, { headers });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Er ging iets mis" }));
+    throw new Error(error.detail || `HTTP ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `boekhouding-${jaar}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 // Bank Matching
 export const runBankMatching = () =>

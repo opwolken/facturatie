@@ -1,10 +1,31 @@
 {
   "hosting": {
-    "source": "frontend",
+    "public": "frontend/out",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "frameworksBackend": {
-      "region": "europe-west1"
-    }
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "facturatie-api",
+          "region": "europe-west1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store, no-cache, must-revalidate"
+          }
+        ]
+      }
+    ]
   },
   "firestore": {
     "indexes": "firestore.indexes.json"

@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getIdToken } from "@/lib/firebase";
+import { getApiBase } from "@/lib/apiBase";
 import toast from "react-hot-toast";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 interface CompanySettings {
   bedrijfsnaam: string;
@@ -42,8 +41,9 @@ export default function SettingsPage() {
 
   const loadSettings = async () => {
     try {
+      const apiBase = getApiBase();
       const token = await getIdToken();
-      const res = await fetch(`${API_BASE}/settings`, {
+      const res = await fetch(`${apiBase}/settings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -59,8 +59,9 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const apiBase = getApiBase();
       const token = await getIdToken();
-      const res = await fetch(`${API_BASE}/settings`, {
+      const res = await fetch(`${apiBase}/settings`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,

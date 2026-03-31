@@ -79,6 +79,46 @@ export function getStatusLabel(status: string): string {
   return labels[status] || status;
 }
 
+export type InvoiceStatus = "concept" | "verzonden" | "betaald" | "verlopen";
+
+const invoiceStatusFlow: Record<InvoiceStatus, InvoiceStatus[]> = {
+  concept: ["concept", "verzonden"],
+  verzonden: ["concept", "verzonden", "betaald", "verlopen"],
+  betaald: ["verzonden", "betaald"],
+  verlopen: ["concept", "verzonden", "betaald", "verlopen"],
+};
+
+export function getAllowedInvoiceStatuses(status: InvoiceStatus): InvoiceStatus[] {
+  return invoiceStatusFlow[status] || [status];
+}
+
+export function getInvoiceStatusOptions(status: InvoiceStatus): Array<{
+  value: InvoiceStatus;
+  label: string;
+}> {
+  return getAllowedInvoiceStatuses(status).map((value) => ({
+    value,
+    label: getStatusLabel(value),
+  }));
+}
+
+export function getInvoiceStatusConfirmationMessage(
+  currentStatus: InvoiceStatus,
+  nextStatus: InvoiceStatus
+): string | null {
+  if (currentStatus === nextStatus) return null;
+
+  if (nextStatus === "betaald") {
+    return "Weet je zeker dat je deze factuur als betaald wilt markeren?";
+  }
+
+  if (nextStatus === "concept") {
+    return "Weet je zeker dat je deze factuur terug naar concept wilt zetten? Verzonden- en betaaldatums worden dan leeggemaakt.";
+  }
+
+  return null;
+}
+
 export function todayISO(): string {
   return new Date().toISOString().split("T")[0];
 }

@@ -2,14 +2,21 @@
 
 import csv
 import io
+import zipfile
 from datetime import date
+from urllib.parse import urlparse, unquote
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from firebase_admin import firestore
+from fastapi.responses import StreamingResponse
+from firebase_admin import firestore, storage
 from google.cloud.firestore_v1 import FieldFilter
 from collections import defaultdict
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, numbers
 
 from app.auth import get_current_user
+from app.services.pdf_generator import generate_invoice_pdf
+from app.config import FIREBASE_STORAGE_BUCKET
 
 router = APIRouter()
 
@@ -807,3 +814,228 @@ async def get_jaarcijfers(
 
     result["beschikbare_jaren"] = beschikbare_jaren
     return result
+
+
+def _filename_from_url(url: str) -> str:
+    """Extract the original filename from a Firebase Storage public URL."""
+    path = unquote(urlparse(url).path)
+    # Storage URLs: /v0/b/bucket/o/expenses%2Fuid%2Ftimestamp_filename.pdf
+    # After unquote the path contains the full storage path
+    return path.rsplit("/", 1)[-1] if "/" in path else path
+
+
+def _date_to_dutch(date_str: str) -> str:
+    """Convert YYYY-MM-DD to DD-MM-YYYY."""
+    try:
+        parts = date_str.split("-")
+        if len(parts) == 3 and len(parts[0]) == 4:
+            return f"{parts[2]}-{parts[1]}-{parts[0]}"
+    except Exception:
+        pass
+    return date_str
+
+
+def _storage_path_from_url(url: str) -> str:
+    """Extract the Firebase Storage blob path from a public URL.
+    
+    Public URLs look like:
+      https://storage.googleapis.com/BUCKET/expenses/uid/timestamp_file.pdf
+    Or Firebase REST API URLs:
+      https://firebasestorage.googleapis.com/v0/b/BUCKET/o/path%2Fto%2Ffile
+    """
+    if not url:
+        return ""
+    decoded = unquote(urlparse(url).path)
+    # REST API format: /v0/b/bucket/o/the/actual/path
+    if "/o/" in decoded:
+        return decoded.split("/o/", 1)[1]
+    # Public URL format: /BUCKET/the/actual/path
+    bucket = FIREBASE_STORAGE_BUCKET
+    if bucket and f"/{bucket}/" in decoded:
+        return decoded.split(f"/{bucket}/", 1)[1]
+    # Fallback: everything after 3rd slash segment
+    parts = decoded.lstrip("/").split("/", 1)
+    return parts[1] if len(parts) > 1 else ""
+
+
+@router.get("/{jaar}/export")
+async def export_jaarcijfers(
+    jaar: int,
+    user: dict = Depends(get_current_user),
+):
+    """Export a ZIP with Excel overview + all invoice/expense PDFs for the year."""
+    db = get_db()
+    uid = user["uid"]
+
+    all_invoice_data, all_expense_data, _ = _load_all_data(db, uid)
+
+    # Load company settings + customers for on-the-fly PDF generation
+    settings_doc = db.collection("company_settings").document(uid).get()
+    company = settings_doc.to_dict() if settings_doc.exists else {}
+
+    # Pre-load all customers
+    customer_cache = {}
+    for cdoc in db.collection("customers").where(filter=FieldFilter("user_id", "==", uid)).stream():
+        customer_cache[cdoc.id] = cdoc.to_dict()
+
+    # Filter invoices for this year (status verzonden/betaald)
+    year_invoices = [
+        inv for inv in all_invoice_data
+        if get_year(inv.get("factuurdatum", "")) == jaar
+        and inv.get("status") in ("verzonden", "betaald")
+    ]
+
+    # Filter expenses for this year
+    year_expenses = [
+        exp for exp in all_expense_data
+        if get_year(exp.get("datum", "")) == jaar
+    ]
+
+    # Build rows for Excel
+    rows = []
+    bucket = storage.bucket()
+
+    for inv in year_invoices:
+        factuurnummer = inv.get("factuurnummer", "")
+        bestand = f"{factuurnummer}.pdf"
+
+        # Try storage path from pdf_url first, fallback to convention
+        storage_path = _storage_path_from_url(inv.get("pdf_url", ""))
+        if not storage_path:
+            storage_path = f"invoices/{uid}/{inv.get('id')}.pdf"
+
+        # Try to get existing PDF; generate on-the-fly if missing
+        pdf_bytes = None
+        try:
+            blob = bucket.blob(storage_path)
+            pdf_bytes = blob.download_as_bytes()
+        except Exception:
+            pass
+
+        if not pdf_bytes:
+            # Generate PDF on the fly
+            try:
+                klant = customer_cache.get(inv.get("klant_id", ""), {})
+                pdf_bytes = generate_invoice_pdf(inv, company, klant)
+            except Exception:
+                pdf_bytes = None
+        rows.append({
+            "in_uit": "In",
+            "factuurdatum": inv.get("factuurdatum", ""),
+            "factuurnummer": factuurnummer,
+            "daan_of_wim": inv.get("daan_of_wim", "") or "",
+            "btw": inv.get("btw_totaal", 0),
+            "waarde": inv.get("totaal", 0),
+            "bestand": bestand,
+            "pdf_bytes": pdf_bytes,
+        })
+
+    for exp in year_expenses:
+        pdf_url = exp.get("pdf_url", "") or ""
+        # Determine filename for the PDF
+        if pdf_url:
+            raw_name = _filename_from_url(pdf_url)
+            # Strip the timestamp prefix (2024-01-01T00:00:00+00:00_filename.pdf)
+            if "_" in raw_name:
+                bestand = raw_name.split("_", 1)[1]
+            else:
+                bestand = raw_name
+        else:
+            bestand = ""
+
+        storage_path = _storage_path_from_url(pdf_url)
+
+        # Download expense PDF
+        pdf_bytes = None
+        if storage_path:
+            try:
+                blob = bucket.blob(storage_path)
+                pdf_bytes = blob.download_as_bytes()
+            except Exception:
+                pass
+
+        rows.append({
+            "in_uit": "Uit",
+            "factuurdatum": exp.get("datum", ""),
+            "factuurnummer": exp.get("factuurnummer", ""),
+            "daan_of_wim": exp.get("daan_of_wim", "") or "",
+            "btw": -(exp.get("btw", 0) or 0),
+            "waarde": -(exp.get("totaal", 0) or 0),
+            "bestand": bestand,
+            "pdf_bytes": pdf_bytes,
+        })
+
+    # Sort by date descending
+    rows.sort(key=lambda r: r["factuurdatum"], reverse=True)
+
+    # === Build Excel ===
+    wb = Workbook()
+    ws = wb.active
+    ws.title = str(jaar)
+
+    # Title row
+    ws.merge_cells("A1:G1")
+    title_cell = ws["A1"]
+    title_cell.value = f"Overzicht facturen {jaar} – Opwolken.com VOF"
+    title_cell.font = Font(bold=True, size=14)
+    title_cell.alignment = Alignment(horizontal="left")
+
+    # Header row (row 3)
+    headers = ["In/Uit", "Factuurdatum", "Factuurnummer", "Daan of Wim", "BTW", "Waarde", "Bestand"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=col, value=h)
+        cell.font = Font(bold=True)
+
+    # Data rows
+    for i, row in enumerate(rows, 4):
+        ws.cell(row=i, column=1, value=row["in_uit"])
+        ws.cell(row=i, column=2, value=_date_to_dutch(row["factuurdatum"]))
+        ws.cell(row=i, column=3, value=row["factuurnummer"])
+        ws.cell(row=i, column=4, value=row["daan_of_wim"])
+        btw_cell = ws.cell(row=i, column=5, value=row["btw"])
+        btw_cell.number_format = '#,##0.00'
+        val_cell = ws.cell(row=i, column=6, value=row["waarde"])
+        val_cell.number_format = '#,##0.00'
+        ws.cell(row=i, column=7, value=row["bestand"])
+
+    # Auto-width columns
+    for col in ws.columns:
+        max_len = 0
+        col_letter = None
+        for cell in col:
+            if hasattr(cell, "column_letter"):
+                col_letter = cell.column_letter
+            if cell.value and not isinstance(cell, type(None)):
+                try:
+                    max_len = max(max_len, len(str(cell.value)))
+                except Exception:
+                    pass
+        if col_letter:
+            ws.column_dimensions[col_letter].width = min(max_len + 3, 50)
+
+    excel_buf = io.BytesIO()
+    wb.save(excel_buf)
+    excel_buf.seek(0)
+
+    # === Build ZIP ===
+    zip_buf = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"overzicht-{jaar}.xlsx", excel_buf.read())
+
+        # Add PDFs
+        for row in rows:
+            if not row["bestand"] or not row.get("pdf_bytes"):
+                continue
+            folder = "inkomsten" if row["in_uit"] == "In" else "uitgaven"
+            zf.writestr(f"{folder}/{row['bestand']}", row["pdf_bytes"])
+
+    zip_buf.seek(0)
+
+    return StreamingResponse(
+        zip_buf,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="boekhouding-{jaar}.zip"'
+        },
+    )

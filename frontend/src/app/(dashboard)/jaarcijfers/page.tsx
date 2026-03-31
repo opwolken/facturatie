@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getJaarcijfersOverzicht, uploadBankCsv } from "@/lib/api";
+import { getJaarcijfersOverzicht, uploadBankCsv, exportJaarcijfers } from "@/lib/api";
 import { JaarcijfersOverzicht, JaarcijfersData, MVAItem, BankAccountStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -71,6 +71,7 @@ export default function JaarcijfersPage() {
   const [loading, setLoading] = useState(true);
   const [jaar, setJaar] = useState<number>(new Date().getFullYear() - 1);
   const [uploading, setUploading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async () => {
@@ -173,6 +174,23 @@ export default function JaarcijfersPage() {
             onChange={handleCsvUpload}
             className="hidden"
           />
+          <button
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await exportJaarcijfers(activeJaar);
+                toast.success("Export gedownload");
+              } catch (err: any) {
+                toast.error(err?.message || "Fout bij exporteren");
+              } finally {
+                setExporting(false);
+              }
+            }}
+            disabled={exporting}
+            className="btn-primary text-sm"
+          >
+            {exporting ? "Exporteren…" : `Export ${activeJaar}`}
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}

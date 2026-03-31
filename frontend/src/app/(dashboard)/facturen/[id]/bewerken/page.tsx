@@ -5,7 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getInvoice, updateInvoice, getCustomers } from "@/lib/api";
 import { Customer, Invoice, InvoiceLineItem } from "@/types";
-import { formatCurrency } from "@/lib/utils";
+import {
+  formatCurrency,
+  getInvoiceStatusConfirmationMessage,
+  getInvoiceStatusOptions,
+} from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const emptyLine: InvoiceLineItem = {
@@ -22,6 +26,7 @@ export default function EditInvoicePage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalStatus, setOriginalStatus] = useState<Invoice["status"]>("concept");
 
   const [form, setForm] = useState({
     klant_id: "",
@@ -30,6 +35,7 @@ export default function EditInvoicePage() {
     vervaldatum: "",
     onderwerp: "",
     notities: "",
+    status: "concept" as Invoice["status"],
     daan_of_wim: "Beiden",
     regels: [{ ...emptyLine }] as InvoiceLineItem[],
   });
@@ -42,6 +48,7 @@ export default function EditInvoicePage() {
       .then(([invoiceData, customersData]) => {
         const inv = invoiceData as Invoice;
         setCustomers(customersData as Customer[]);
+        setOriginalStatus(inv.status || "concept");
         setForm({
           klant_id: inv.klant_id || "",
           klant_naam: inv.klant_naam || "",
@@ -49,6 +56,7 @@ export default function EditInvoicePage() {
           vervaldatum: inv.vervaldatum || "",
           onderwerp: inv.onderwerp || "",
           notities: inv.notities || "",
+          status: inv.status || "concept",
           daan_of_wim: inv.daan_of_wim || "Beiden",
           regels: inv.regels?.length ? inv.regels : [{ ...emptyLine }],
         });
@@ -95,6 +103,12 @@ export default function EditInvoicePage() {
       toast.error("Selecteer een klant");
       return;
     }
+
+    const confirmationMessage = getInvoiceStatusConfirmationMessage(originalStatus, form.status);
+    if (confirmationMessage && !confirm(confirmationMessage)) {
+      return;
+    }
+
     setSaving(true);
     try {
       await updateInvoice(params.id as string, form);
@@ -189,6 +203,20 @@ export default function EditInvoicePage() {
                 <option value="Beiden">Beiden</option>
                 <option value="Daan">Daan</option>
                 <option value="Wim">Wim</option>
+              </select>
+            </div>
+            <div className="mt-4">
+              <label className="label">Status</label>
+              <select
+                className="input"
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as Invoice["status"] })}
+              >
+                {getInvoiceStatusOptions(form.status).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

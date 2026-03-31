@@ -20,6 +20,8 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
+  getInvoiceStatusConfirmationMessage,
+  getInvoiceStatusOptions,
   getStatusColor,
   getStatusLabel,
 } from "@/lib/utils";
@@ -75,10 +77,20 @@ export default function InvoiceDetailPage() {
       .finally(() => setLoading(false));
   }, [params.id]);
 
-  const handleStatusChange = async (status: string) => {
+  const handleStatusChange = async (status: Invoice["status"]) => {
+    if (!invoice) return;
+
+    const confirmationMessage = getInvoiceStatusConfirmationMessage(invoice.status, status);
+    if (confirmationMessage && !confirm(confirmationMessage)) {
+      return;
+    }
+
     try {
       const updated = await updateInvoice(params.id as string, { status });
       setInvoice(updated as Invoice);
+      if (status !== "verzonden") {
+        setShowMatching(false);
+      }
       toast.success(`Status gewijzigd naar ${getStatusLabel(status)}`);
     } catch (e: any) {
       toast.error(e.message);
@@ -242,15 +254,27 @@ export default function InvoiceDetailPage() {
               {invoice.klant_naam} · {formatDate(invoice.factuurdatum)}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {invoice.status === "concept" && (
-              <Link href={`/facturen/${params.id}/bewerken`} className="btn-secondary">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                </svg>
-                Bewerken
-              </Link>
-            )}
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="label">Status</label>
+              <select
+                className="input min-w-[11rem]"
+                value={invoice.status}
+                onChange={(e) => handleStatusChange(e.target.value as Invoice["status"])}
+              >
+                {getInvoiceStatusOptions(invoice.status).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Link href={`/facturen/${params.id}/bewerken`} className="btn-secondary">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              Bewerken
+            </Link>
             <button
               onClick={handleGeneratePdf}
               disabled={generatingPdf}

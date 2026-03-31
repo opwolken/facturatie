@@ -118,6 +118,7 @@ async def update_invoice(
     if not doc.exists or doc.to_dict().get("user_id") != user["uid"]:
         raise HTTPException(status_code=404, detail="Factuur niet gevonden")
 
+    current_data = doc.to_dict()
     update_data = invoice.model_dump(exclude_none=True)
 
     if "regels" in update_data:
@@ -127,8 +128,20 @@ async def update_invoice(
         update_data["btw_totaal"] = btw_totaal
         update_data["totaal"] = totaal
 
-    if update_data.get("status") == "betaald":
-        update_data["betaald_op"] = datetime.now(timezone.utc).isoformat()
+    status = update_data.get("status")
+    if status:
+        now = datetime.now(timezone.utc).isoformat()
+        current_verzonden_op = current_data.get("verzonden_op")
+
+        if status == "concept":
+            update_data["verzonden_op"] = None
+            update_data["betaald_op"] = None
+        elif status == "verzonden":
+            update_data["verzonden_op"] = current_verzonden_op or now
+            update_data["betaald_op"] = None
+        elif status == "betaald":
+            update_data["verzonden_op"] = current_verzonden_op or now
+            update_data["betaald_op"] = current_data.get("betaald_op") or now
 
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     doc_ref.update(update_data)

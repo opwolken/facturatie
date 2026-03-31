@@ -3,14 +3,25 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getInvoices, deleteInvoice } from "@/lib/api";
+import { getInvoices, deleteInvoice, updateInvoice } from "@/lib/api";
 import { Invoice } from "@/types";
-import { formatCurrency, formatDateShort, getStatusColor, getStatusLabel } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDateShort,
+  getInvoiceStatusConfirmationMessage,
+  getInvoiceStatusOptions,
+  getStatusColor,
+  getStatusLabel,
+} from "@/lib/utils";
 import { useColumnPreferences } from "@/lib/useColumnPreferences";
 import DataTable, { ColumnDef, FilterOption } from "@/components/DataTable";
 import toast from "react-hot-toast";
 
-const invoiceColumns: ColumnDef<Invoice>[] = [
+function getInvoiceColumns(
+  onStatusChange: (id: string, status: Invoice["status"]) => void,
+  updatingInvoiceId: string | null
+): ColumnDef<Invoice>[] {
+  return [
   {
     key: "factuurnummer",
     label: "Nummer",
@@ -56,7 +67,21 @@ const invoiceColumns: ColumnDef<Invoice>[] = [
     key: "status",
     label: "Status",
     render: (inv) => (
-      <span className={`badge ${getStatusColor(inv.status)}`}>{getStatusLabel(inv.status)}</span>
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <span className={`badge ${getStatusColor(inv.status)}`}>{getStatusLabel(inv.status)}</span>
+        <select
+          className="input w-auto min-w-[9rem] py-1 text-xs"
+          value={inv.status}
+          disabled={updatingInvoiceId === inv.id}
+          onChange={(e) => onStatusChange(inv.id, e.target.value as Invoice["status"])}
+        >
+          {getInvoiceStatusOptions(inv.status).map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
     ),
     sortValue: (inv) => inv.status,
     filterValue: (inv) => inv.status,
@@ -91,7 +116,8 @@ const invoiceColumns: ColumnDef<Invoice>[] = [
     render: (inv) => <span className="text-sm font-medium text-gray-900">{formatCurrency(inv.totaal)}</span>,
     sortValue: (inv) => inv.totaal,
   },
-];
+  ];
+}
 
 const invoiceFilters: FilterOption[] = [
   {
@@ -119,7 +145,31 @@ export default function InvoicesPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
   const { savedColumns, loaded, saveColumns } = useColumnPreferences("facturen");
+
+  const invoiceColumns = getInvoiceColumns(async (id, status) => {
+    const currentInvoice = invoices.find((invoice) => invoice.id === id);
+    if (!currentInvoice) {
+      return;
+    }
+
+    const confirmationMessage = getInvoiceStatusConfirmationMessage(currentInvoice.status, status);
+    if (confirmationMessage && !confirm(confirmationMessage)) {
+      return;
+    }
+
+    setUpdatingInvoiceId(id);
+    try {
+      const updated = (await updateInvoice(id, { status })) as Invoice;
+      setInvoices((prev) => prev.map((invoice) => (invoice.id === id ? updated : invoice)));
+      toast.success(`Status gewijzigd naar ${getStatusLabel(status)}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setUpdatingInvoiceId((current) => (current === id ? null : current));
+    }
+  }, updatingInvoiceId);
 
   useEffect(() => {
     loadInvoices();

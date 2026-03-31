@@ -26,6 +26,8 @@ class Expense(ExpenseCreate):
     id: str
     user_id: str
     pdf_url: Optional[str] = None
+    bestand_naam: Optional[str] = None
+    bestand_mime_type: Optional[str] = None
     daan_of_wim: Optional[str] = "Beiden"
     created_at: Optional[str] = None
     updated_at: Optional[str] = None

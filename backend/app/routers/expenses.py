@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from app.auth import get_current_user
 from app.models.expense import ExpenseCreate, ExpenseUpdate
-from app.services.pdf_parser import extract_expense_data
+from app.services.pdf_parser import detect_expense_upload_mime_type, extract_expense_data
 
 router = APIRouter()
 
@@ -39,21 +39,28 @@ async def get_expense(expense_id: str, user: dict = Depends(get_current_user)):
 async def upload_expense(
     file: UploadFile = File(...), user: dict = Depends(get_current_user)
 ):
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Alleen PDF bestanden toegestaan")
+    mime_type = detect_expense_upload_mime_type(file.filename, file.content_type)
+    if not mime_type:
+        raise HTTPException(
+            status_code=400,
+            detail="Alleen PDF, JPG, PNG en WEBP bestanden toegestaan",
+        )
 
     contents = await file.read()
 
     # Upload to Firebase Storage
     db = get_db()
     now = datetime.now(timezone.utc).isoformat()
+    filename = file.filename or f"upload-{now}.pdf"
     bucket = storage.bucket()
-    blob = bucket.blob(f"expenses/{user['uid']}/{now}_{file.filename}")
-    blob.upload_from_string(contents, content_type="application/pdf")
+    blob = bucket.blob(f"expenses/{user['uid']}/{now}_{filename}")
+    blob.upload_from_string(contents, content_type=mime_type)
     blob.make_public()
 
-    # Extract data from PDF
-    extracted = extract_expense_data(contents)
+    try:
+        extracted = extract_expense_data(contents, mime_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Create expense record
     data = {
@@ -67,6 +74,8 @@ async def upload_expense(
         "totaal": extracted.get("totaal", 0),
         "status": "nieuw",
         "pdf_url": blob.public_url,
+        "bestand_naam": filename,
+        "bestand_mime_type": mime_type,
         "user_id": user["uid"],
         "created_at": now,
         "updated_at": now,

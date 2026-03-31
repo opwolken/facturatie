@@ -12,28 +12,29 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.1.0",
+    "firebase": "^10.12.0",
+    "heic2any": "^0.0.4",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "firebase": "^10.12.0",
-    "recharts": "^2.12.0",
-    "react-hot-toast": "^2.4.1",
     "react-dropzone": "^14.2.3",
-    "date-fns": "^3.6.0",
-    "date-fns-tz": "^3.1.0",
-    "react-router-dom": "^6.28.1"
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.28.1",
+    "recharts": "^2.12.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "^5.4.0",
-    "tailwindcss": "^3.4.0",
-    "postcss": "^8.4.0",
     "autoprefixer": "^10.4.0",
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.2.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.4.0",
     "vite": "^5.4.14"
   }
 }

@@ -1,16 +1,44 @@
 import re
 import io
 import json
-import base64
 import pdfplumber
+from pathlib import Path
 
 from app.config import GEMINI_API_KEY
+
+SUPPORTED_IMAGE_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+}
+
+SUPPORTED_EXPENSE_UPLOAD_MIME_TYPES = {
+    "application/pdf",
+    *SUPPORTED_IMAGE_MIME_TYPES,
+}
+
+EXTENSION_TO_MIME_TYPE = {
+    ".pdf": "application/pdf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
 
 MAANDEN = {
     "januari": "01", "februari": "02", "maart": "03", "april": "04",
     "mei": "05", "juni": "06", "juli": "07", "augustus": "08",
     "september": "09", "oktober": "10", "november": "11", "december": "12",
 }
+
+
+def detect_expense_upload_mime_type(filename: str | None, content_type: str | None) -> str | None:
+    normalized_content_type = (content_type or "").split(";", 1)[0].strip().lower()
+    if normalized_content_type in SUPPORTED_EXPENSE_UPLOAD_MIME_TYPES:
+        return normalized_content_type
+
+    extension = Path(filename or "").suffix.lower()
+    return EXTENSION_TO_MIME_TYPE.get(extension)
 
 
 def _to_iso_date(date_str: str) -> str:
@@ -35,21 +63,31 @@ def _to_iso_date(date_str: str) -> str:
     return s
 
 
-def extract_expense_data(pdf_bytes: bytes) -> dict:
-    """Extract invoice/expense data from a PDF using Gemini 2.5 Flash, with regex fallback."""
+def extract_expense_data(file_bytes: bytes, mime_type: str = "application/pdf") -> dict:
+    """Extract invoice/expense data from a PDF or supported image file."""
+    normalized_mime_type = (mime_type or "application/pdf").lower()
+
+    if normalized_mime_type not in SUPPORTED_EXPENSE_UPLOAD_MIME_TYPES:
+        raise ValueError("Bestandstype wordt niet ondersteund")
+
     if GEMINI_API_KEY:
         try:
-            result = _extract_with_gemini(pdf_bytes)
+            result = _extract_with_gemini(file_bytes, normalized_mime_type)
             result["methode"] = "gemini"
             return result
         except Exception:
-            pass
-    result = _extract_with_regex(pdf_bytes)
+            if normalized_mime_type != "application/pdf":
+                raise ValueError("Foto-analyse is nu niet beschikbaar. Upload een PDF of probeer een JPG/PNG-foto opnieuw.")
+
+    if normalized_mime_type != "application/pdf":
+        raise ValueError("Foto-analyse vereist Gemini AI. Upload anders een PDF-bestand.")
+
+    result = _extract_with_regex(file_bytes)
     result["methode"] = "regex"
     return result
 
 
-def _extract_with_gemini(pdf_bytes: bytes) -> dict:
+def _extract_with_gemini(file_bytes: bytes, mime_type: str) -> dict:
     from google import genai
     from google.genai import types
 
@@ -77,12 +115,10 @@ Velden:
 Gebruik altijd punten als decimaalscheidingsteken in de getallen.
 """
 
-    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
-
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=[
-            types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
+            types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
             prompt,
         ],
     )

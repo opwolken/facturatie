@@ -13,6 +13,9 @@ import {
 } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+const IMAGE_FILE_PATTERN = /\.(png|jpe?g|webp)(?:$|[?#])/i;
+const PDF_FILE_PATTERN = /\.pdf(?:$|[?#])/i;
+
 export default function ExpenseDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -56,6 +59,11 @@ export default function ExpenseDetailPage() {
   }
 
   if (!expense) return null;
+
+  const mimeType = (expense.bestand_mime_type || "").toLowerCase();
+  const isImageAttachment = mimeType.startsWith("image/") || (!mimeType && !!expense.pdf_url && IMAGE_FILE_PATTERN.test(expense.pdf_url));
+  const isPdfAttachment = mimeType === "application/pdf" || (!mimeType && !!expense.pdf_url && PDF_FILE_PATTERN.test(expense.pdf_url));
+  const attachmentLabel = isImageAttachment ? "Foto" : isPdfAttachment ? "PDF" : "Bestand";
 
   return (
     <div>
@@ -226,12 +234,12 @@ export default function ExpenseDetailPage() {
           </div>
         </div>
 
-        {/* Right: PDF preview */}
+        {/* Right: file preview */}
         <div>
           {expense.pdf_url ? (
             <div className="card p-0 overflow-hidden">
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                <h2 className="text-sm font-medium text-gray-700">PDF</h2>
+                <h2 className="text-sm font-medium text-gray-700">{attachmentLabel}</h2>
                 <a
                   href={expense.pdf_url}
                   target="_blank"
@@ -244,19 +252,36 @@ export default function ExpenseDetailPage() {
                   Openen in nieuw tabblad
                 </a>
               </div>
-              <iframe
-                src={expense.pdf_url}
-                className="w-full"
-                style={{ height: "calc(100vh - 200px)", minHeight: "600px" }}
-                title="PDF preview"
-              />
+              {isImageAttachment ? (
+                <div className="bg-gray-50 p-4">
+                  <img
+                    src={expense.pdf_url}
+                    alt={expense.bestand_naam || expense.leverancier || "Bijlage"}
+                    className="mx-auto w-full rounded-lg object-contain"
+                    style={{ height: "calc(100vh - 240px)", minHeight: "400px" }}
+                  />
+                </div>
+              ) : isPdfAttachment ? (
+                <iframe
+                  src={expense.pdf_url}
+                  className="w-full"
+                  style={{ height: "calc(100vh - 200px)", minHeight: "600px" }}
+                  title="PDF preview"
+                />
+              ) : (
+                <div className="flex min-h-[300px] items-center justify-center bg-gray-50 px-6 py-12 text-center">
+                  <p className="text-sm text-gray-500">
+                    Voor dit bestand is geen inline preview beschikbaar. Open het in een nieuw tabblad.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="card flex flex-col items-center justify-center py-16 text-center">
               <svg className="h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
-              <p className="text-sm text-gray-500">Geen PDF beschikbaar</p>
+              <p className="text-sm text-gray-500">Geen bestand beschikbaar</p>
             </div>
           )}
         </div>

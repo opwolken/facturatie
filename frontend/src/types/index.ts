@@ -65,6 +65,8 @@ export interface Expense {
   afschrijving_jaren: number | null;
   afschrijving_restwaarde: number | null;
   pdf_url: string | null;
+  bestand_naam?: string | null;
+  bestand_mime_type?: string | null;
   user_id: string;
   created_at: string;
   updated_at: string;
